@@ -33,14 +33,14 @@ $enemy = $pdo->query("SELECT * FROM cards ORDER BY RAND() LIMIT 1")->fetch();
   <?php if (!$myCards): ?>
     <div class="alert alert-warning">Tu n'as pas de carte. Ouvre d'abord un booster.</div>
   <?php else: ?>
-    <div class="row g-3 align-items-start">
+    <div class="row g-3 battle-cards-row">
       <div class="col-md-5">
         <label class="form-label">Ta carte</label>
         <div id="myCardPreview"></div>
       </div>
 
-      <div class="col-md-2 d-flex align-items-center justify-content-center mt-4 mt-md-0">
-        <h3>VS</h3>
+      <div class="col-md-2 d-flex align-items-center justify-content-center battle-vs-col">
+        <h3 class="battle-vs-title mb-0">VS</h3>
       </div>
 
       <div class="col-md-5">

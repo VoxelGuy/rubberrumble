@@ -1,3 +1,17 @@
+function rarityMeta(rarity) {
+  const key = (rarity || '').toLowerCase();
+  if (key === 'commun') return { stars: 1, className: 'rarity-commun' };
+  if (key === 'rare') return { stars: 2, className: 'rarity-rare' };
+  if (key === 'superrare') return { stars: 3, className: 'rarity-superrare' };
+  if (key === 'legendaire') return { stars: 4, className: 'rarity-legendaire' };
+  return { stars: 1, className: 'rarity-commun' };
+}
+
+function rarityHtml(rarity) {
+  const meta = rarityMeta(rarity);
+  return `<span class="rarity-label ${meta.className}">${'⭐'.repeat(meta.stars)} ${rarity || ''}</span>`;
+}
+
 function cardHtml(c, defeated = false) {
   const typeClass = `type-${(c.type || '').toLowerCase()}`;
   const defeatedClass = defeated ? ' defeated-card' : '';
@@ -12,7 +26,7 @@ function cardHtml(c, defeated = false) {
       </div>
       <div class="tcg-image">${img}</div>
       <div class="tcg-body">
-        <div class="small">⭐ ${c.rarity || ''}</div>
+        <div class="small">${rarityHtml(c.rarity)}</div>
         <div>1) ${c.attack_name_1} — ${c.attack_damage_1} (${c.attack_success_1}%)</div>
         <div>2) ${c.attack_name_2} — ${c.attack_damage_2} (${c.attack_success_2}%)</div>
       </div>
@@ -29,7 +43,7 @@ const rouletteText = document.getElementById('rouletteText');
 const attackBtns = document.querySelectorAll('.attack-btn');
 const newBattleBtn = document.getElementById('newBattleBtn');
 
-if (mySelect && enemyWrap) {
+if (mySelect && enemyWrap && myPreview && logEl) {
   let myCard = JSON.parse(mySelect.value);
   let enemy = JSON.parse(enemyWrap.dataset.enemy);
 
@@ -51,16 +65,24 @@ if (mySelect && enemyWrap) {
   }
 
   function setWheelChance(successChance) {
-    rouletteWheel.style.setProperty('--success', `${successChance}%`);
+    if (rouletteWheel) {
+      rouletteWheel.style.setProperty('--success', `${successChance}%`);
+    }
   }
 
   function roulette(successChance) {
     return new Promise((resolve) => {
+      const roll = Math.floor(Math.random() * 100) + 1;
+      const ok = roll <= successChance;
+
+      if (!rouletteNeedle || !rouletteText) {
+        resolve(ok);
+        return;
+      }
+
       rouletteText.textContent = 'Lancement...';
       setWheelChance(successChance);
 
-      const roll = Math.floor(Math.random() * 100) + 1;
-      const ok = roll <= successChance;
       const resultAngle = (roll / 100) * 360;
       const spins = 360 * (4 + Math.floor(Math.random() * 3));
       const finalAngle = spins + resultAngle;
@@ -107,7 +129,6 @@ if (mySelect && enemyWrap) {
 
     render();
 
-    // Tour IA simple : 70% attaque 1, 30% attaque 2
     const aiSlot = Math.random() < 0.7 ? 1 : 2;
     const aiDmg = parseInt(enemy[`attack_damage_${aiSlot}`], 10);
     const aiSucc = parseInt(enemy[`attack_success_${aiSlot}`], 10);
@@ -135,7 +156,7 @@ if (mySelect && enemyWrap) {
     battleFinished = true;
     attackBtns.forEach((b) => { b.disabled = true; });
     mySelect.disabled = true;
-    newBattleBtn.classList.remove('d-none');
+    if (newBattleBtn) newBattleBtn.classList.remove('d-none');
 
     log(win ? '🏆 Victoire !' : '💀 Défaite...');
 
@@ -154,9 +175,11 @@ if (mySelect && enemyWrap) {
     }
   }
 
-  newBattleBtn.addEventListener('click', () => {
-    window.location.reload();
-  });
+  if (newBattleBtn) {
+    newBattleBtn.addEventListener('click', () => {
+      window.location.reload();
+    });
+  }
 
   mySelect.addEventListener('change', () => {
     if (battleFinished) return;
@@ -170,9 +193,11 @@ if (mySelect && enemyWrap) {
 
     attackBtns.forEach((b) => { b.disabled = false; });
     logEl.innerHTML = '';
-    rouletteText.textContent = '';
-    rouletteNeedle.style.transition = 'none';
-    rouletteNeedle.style.transform = 'translateX(-50%) rotate(0deg)';
+    if (rouletteText) rouletteText.textContent = '';
+    if (rouletteNeedle) {
+      rouletteNeedle.style.transition = 'none';
+      rouletteNeedle.style.transform = 'translateX(-50%) rotate(0deg)';
+    }
     setWheelChance(parseInt(myCard.attack_success_1, 10));
     render();
   });

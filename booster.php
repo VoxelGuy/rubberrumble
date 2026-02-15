@@ -10,6 +10,15 @@ function formatEuros(int $centimes): string {
     return number_format($centimes / 100, 2, ',', ' ') . ' €';
 }
 
+function rarityMeta(string $rarity): array {
+    return match ($rarity) {
+        'Commun' => ['stars' => 1, 'class' => 'rarity-commun'],
+        'Rare' => ['stars' => 2, 'class' => 'rarity-rare'],
+        'SuperRare' => ['stars' => 3, 'class' => 'rarity-superrare'],
+        'Legendaire' => ['stars' => 4, 'class' => 'rarity-legendaire'],
+        default => ['stars' => 1, 'class' => 'rarity-commun'],
+    };
+}
 
 function pickRarity() {
     $r = mt_rand(1, 100);
@@ -114,7 +123,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
               <?php endif; ?>
             </div>
             <div class="tcg-body">
-              <div class="small">⭐ <?= htmlspecialchars($c['rarity']) ?></div>
+              <?php $rarity = rarityMeta($c['rarity']); ?>
+              <div class="small"><span class="rarity-label <?= $rarity['class'] ?>"><?= str_repeat('⭐', (int)$rarity['stars']) ?> <?= htmlspecialchars($c['rarity']) ?></span></div>
               <div><?= htmlspecialchars($c['attack_name_1']) ?> — <?= (int)$c['attack_damage_1'] ?> dmg (<?= (int)$c['attack_success_1'] ?>%)</div>
               <div><?= htmlspecialchars($c['attack_name_2']) ?> — <?= (int)$c['attack_damage_2'] ?> dmg (<?= (int)$c['attack_success_2'] ?>%)</div>
             </div>

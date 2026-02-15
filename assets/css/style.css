@@ -59,6 +59,20 @@ body {
 }
 .locked .tcg-header { opacity: 0.85; }
 
+.rarity-label { font-weight: 700; }
+.rarity-commun { color: #4da3ff; }
+.rarity-rare { color: #b26cff; }
+.rarity-superrare { color: #ff5757; }
+.rarity-legendaire { color: #ff9f1a; }
+
+.battle-cards-row { align-items: stretch; }
+.battle-vs-col { min-height: 100%; }
+.battle-vs-title { opacity: .95; }
+@media (min-width: 768px) {
+  .battle-cards-row > div { display: flex; flex-direction: column; }
+  .battle-cards-row > .battle-vs-col { justify-content: center !important; }
+}
+
 /* Types */
 .type-plante .tcg-image { background: linear-gradient(120deg, #2e7d32, #66bb6a); }
 .type-feu .tcg-image { background: linear-gradient(120deg, #b71c1c, #ff7043); }
