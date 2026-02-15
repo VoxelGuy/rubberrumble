@@ -18,7 +18,7 @@ $uniqueOwned = (int)$pdo->query("SELECT COUNT(*) c FROM player_cards WHERE playe
 <body class="bg-dark text-light">
 <div class="container py-4">
   <div class="d-flex justify-content-between align-items-center mb-4">
-    <h1 class="mb-0">⚔️ TCG Prototype</h1>
+    <h1 class="mb-0">⚔️ Rubber Rumble</h1>
     <div class="badge text-bg-warning fs-6">🪙 <?= (int)$player['coins'] ?> pièces</div>
   </div>
 
