@@ -17,8 +17,8 @@ if (!$player) {
 }
 
 $delta = 0;
-if ($result === 'WIN') $delta = 120;
-if ($result === 'LOSE') $delta = 40; // consolation
+if ($result === 'WIN') $delta = 8;
+if ($result === 'LOSE') $delta = 0;
 
 $pdo->beginTransaction();
 try {
