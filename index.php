@@ -10,7 +10,7 @@ $uniqueOwned = (int)$pdo->query("SELECT COUNT(*) c FROM player_cards WHERE playe
 <html lang="fr">
 <head>
   <meta charset="utf-8">
-  <title>TCG Proto</title>
+  <title>Rubber Rumble</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="assets/css/style.css" rel="stylesheet">
@@ -27,7 +27,7 @@ $uniqueOwned = (int)$pdo->query("SELECT COUNT(*) c FROM player_cards WHERE playe
       <div class="card glass h-100">
         <div class="card-body">
           <h5>Booster</h5>
-          <p>Ouvre un booster (100 pièces). 5 cartes tirées avec raretés.</p>
+          <p>Ouvre un booster (100 pièces). 4 cartes tirées avec raretés.</p>
           <a class="btn btn-primary w-100" href="booster.php">Ouvrir un booster</a>
         </div>
       </div>
