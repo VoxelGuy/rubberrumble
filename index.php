@@ -31,7 +31,7 @@ function formatEuros(int $centimes): string {
       <div class="card glass h-100">
         <div class="card-body">
           <h5>Booster</h5>
-          <p>Ouvre un booster (0,10 €). 4 cartes tirées avec raretés.</p>
+          <p>Ouvre un booster (0,10 €).<br>4 cartes tirées avec raretés.</p>
           <a class="btn btn-primary w-100" href="booster.php">Ouvrir un booster</a>
         </div>
       </div>
