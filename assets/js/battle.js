@@ -1,11 +1,12 @@
-function cardHtml(c) {
+function cardHtml(c, defeated = false) {
   const typeClass = `type-${(c.type || '').toLowerCase()}`;
+  const defeatedClass = defeated ? ' defeated-card' : '';
   const img = c.image_path
     ? `<img src="${c.image_path}" alt="">`
     : `<div class="fallback-label">${c.type}</div>`;
 
   return `
-    <div class="tcg-card ${typeClass}">
+    <div class="tcg-card ${typeClass}${defeatedClass}">
       <div class="tcg-header">
         <span>${c.name}</span><span>PV <span class="hp">${c.hp}</span></span>
       </div>
@@ -22,9 +23,11 @@ const mySelect = document.getElementById('myCardSelect');
 const myPreview = document.getElementById('myCardPreview');
 const enemyWrap = document.getElementById('enemyCard');
 const logEl = document.getElementById('battleLog');
-const rouletteBar = document.getElementById('rouletteBar');
+const rouletteWheel = document.getElementById('rouletteWheel');
+const rouletteNeedle = document.getElementById('rouletteNeedle');
 const rouletteText = document.getElementById('rouletteText');
 const attackBtns = document.querySelectorAll('.attack-btn');
+const newBattleBtn = document.getElementById('newBattleBtn');
 
 if (mySelect && enemyWrap) {
   let myCard = JSON.parse(mySelect.value);
@@ -32,50 +35,61 @@ if (mySelect && enemyWrap) {
 
   let myHp = parseInt(myCard.hp, 10);
   let enemyHp = parseInt(enemy.hp, 10);
+  let myDefeated = false;
+  let enemyDefeated = false;
+  let battleFinished = false;
 
   function render() {
     myCard.hp = myHp;
     enemy.hp = enemyHp;
-    myPreview.innerHTML = cardHtml(myCard);
-    enemyWrap.innerHTML = cardHtml(enemy);
+    myPreview.innerHTML = cardHtml(myCard, myDefeated);
+    enemyWrap.innerHTML = cardHtml(enemy, enemyDefeated);
   }
 
   function log(msg) {
     logEl.innerHTML = `<div>${msg}</div>` + logEl.innerHTML;
   }
 
+  function setWheelChance(successChance) {
+    rouletteWheel.style.setProperty('--success', `${successChance}%`);
+  }
+
   function roulette(successChance) {
     return new Promise((resolve) => {
-      rouletteBar.classList.remove('success', 'fail');
-      rouletteBar.style.width = '0%';
-      rouletteText.textContent = "Lancement...";
-      let t = 0;
-      const duration = 600;
-      const interval = 25;
-      const timer = setInterval(() => {
-        t += interval;
-        let p = Math.min(100, Math.floor((t / duration) * 100));
-        rouletteBar.style.width = p + '%';
-        if (t >= duration) {
-          clearInterval(timer);
-          const roll = Math.floor(Math.random() * 100) + 1;
-          const ok = roll <= successChance;
-          rouletteBar.classList.add(ok ? 'success' : 'fail');
-          rouletteText.textContent = ok
-            ? `✅ Réussi (${roll} <= ${successChance})`
-            : `❌ Raté (${roll} > ${successChance})`;
-          resolve(ok);
-        }
-      }, interval);
+      rouletteText.textContent = 'Lancement...';
+      setWheelChance(successChance);
+
+      const roll = Math.floor(Math.random() * 100) + 1;
+      const ok = roll <= successChance;
+      const resultAngle = (roll / 100) * 360;
+      const spins = 360 * (4 + Math.floor(Math.random() * 3));
+      const finalAngle = spins + resultAngle;
+
+      rouletteNeedle.style.transition = 'none';
+      rouletteNeedle.style.transform = 'translateX(-50%) rotate(0deg)';
+
+      requestAnimationFrame(() => {
+        rouletteNeedle.style.transition = 'transform 1.6s cubic-bezier(0.2, 0.8, 0.2, 1)';
+        rouletteNeedle.style.transform = `translateX(-50%) rotate(${finalAngle}deg)`;
+      });
+
+      setTimeout(() => {
+        rouletteText.textContent = ok
+          ? `✅ Réussi (${roll} <= ${successChance})`
+          : `❌ Raté (${roll} > ${successChance})`;
+        resolve(ok);
+      }, 1700);
     });
   }
 
   async function doAttack(slot) {
-    if (myHp <= 0 || enemyHp <= 0) return;
+    if (battleFinished || myHp <= 0 || enemyHp <= 0) return;
 
     const dmg = parseInt(myCard[`attack_damage_${slot}`], 10);
     const succ = parseInt(myCard[`attack_success_${slot}`], 10);
     const name = myCard[`attack_name_${slot}`];
+
+    attackBtns.forEach((b) => { b.disabled = true; });
 
     const ok = await roulette(succ);
     if (ok) {
@@ -85,8 +99,13 @@ if (mySelect && enemyWrap) {
       log(`🔴 ${myCard.name} rate ${name}.`);
     }
 
+    if (enemyHp <= 0) {
+      enemyDefeated = true;
+      render();
+      return endBattle(true);
+    }
+
     render();
-    if (enemyHp <= 0) return endBattle(true);
 
     // Tour IA simple : 70% attaque 1, 30% attaque 2
     const aiSlot = Math.random() < 0.7 ? 1 : 2;
@@ -102,13 +121,23 @@ if (mySelect && enemyWrap) {
       log(`💨 IA: ${enemy.name} rate ${aiName}.`);
     }
 
+    if (myHp <= 0) {
+      myDefeated = true;
+      render();
+      return endBattle(false);
+    }
+
     render();
-    if (myHp <= 0) endBattle(false);
+    attackBtns.forEach((b) => { b.disabled = false; });
   }
 
   async function endBattle(win) {
-    attackBtns.forEach(b => b.disabled = true);
-    log(win ? "🏆 Victoire !" : "💀 Défaite...");
+    battleFinished = true;
+    attackBtns.forEach((b) => { b.disabled = true; });
+    mySelect.disabled = true;
+    newBattleBtn.classList.remove('d-none');
+
+    log(win ? '🏆 Victoire !' : '💀 Défaite...');
 
     try {
       const res = await fetch('save_battle.php', {
@@ -118,28 +147,40 @@ if (mySelect && enemyWrap) {
       });
       const data = await res.json();
       if (data.ok) {
-        log(`🪙 Récompense: +${data.delta} pièces`);
+        log(`💶 Récompense: +${data.delta_label || data.delta}`);
       }
     } catch (e) {
-      log("Erreur sauvegarde combat.");
+      log('Erreur sauvegarde combat.');
     }
   }
 
+  newBattleBtn.addEventListener('click', () => {
+    window.location.reload();
+  });
+
   mySelect.addEventListener('change', () => {
+    if (battleFinished) return;
+
     myCard = JSON.parse(mySelect.value);
     myHp = parseInt(myCard.hp, 10);
     enemy = JSON.parse(enemyWrap.dataset.enemy);
     enemyHp = parseInt(enemy.hp, 10);
-    attackBtns.forEach(b => b.disabled = false);
-    logEl.innerHTML = "";
-    rouletteText.textContent = "";
-    rouletteBar.style.width = '0%';
+    myDefeated = false;
+    enemyDefeated = false;
+
+    attackBtns.forEach((b) => { b.disabled = false; });
+    logEl.innerHTML = '';
+    rouletteText.textContent = '';
+    rouletteNeedle.style.transition = 'none';
+    rouletteNeedle.style.transform = 'translateX(-50%) rotate(0deg)';
+    setWheelChance(parseInt(myCard.attack_success_1, 10));
     render();
   });
 
-  attackBtns.forEach(btn => {
+  attackBtns.forEach((btn) => {
     btn.addEventListener('click', () => doAttack(btn.dataset.slot));
   });
 
+  setWheelChance(parseInt(myCard.attack_success_1, 10));
   render();
 }
