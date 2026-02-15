@@ -7,6 +7,10 @@ $input = json_decode(file_get_contents('php://input'), true);
 $result = $input['result'] ?? '';
 
 $player = $pdo->query("SELECT * FROM players LIMIT 1")->fetch();
+
+function formatEurosLabel(int $centimes): string {
+    return number_format($centimes / 100, 2, ',', ' ') . ' €';
+}
 if (!$player) {
     echo json_encode(['ok'=>false, 'msg'=>'No player']);
     exit;
@@ -25,7 +29,7 @@ try {
     $stmt2->execute([$delta, $player['id']]);
 
     $pdo->commit();
-    echo json_encode(['ok'=>true, 'delta'=>$delta]);
+    echo json_encode(['ok'=>true, 'delta'=>$delta, 'delta_label'=>formatEurosLabel($delta)]);
 } catch(Throwable $e) {
     $pdo->rollBack();
     echo json_encode(['ok'=>false, 'msg'=>$e->getMessage()]);

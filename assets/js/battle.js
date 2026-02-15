@@ -118,7 +118,7 @@ if (mySelect && enemyWrap) {
       });
       const data = await res.json();
       if (data.ok) {
-        log(`🪙 Récompense: +${data.delta} pièces`);
+        log(`💶 Récompense: +${data.delta_label || data.delta}`);
       }
     } catch (e) {
       log("Erreur sauvegarde combat.");
