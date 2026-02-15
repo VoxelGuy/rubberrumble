@@ -24,7 +24,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         try {
             $pdo->prepare("UPDATE players SET coins = coins - 100 WHERE id = ?")->execute([$player['id']]);
 
-            for ($i = 0; $i < 5; $i++) {
+            for ($i = 0; $i < 4; $i++) {
                 $rarity = pickRarity();
 
                 // Pour éviter d’avoir trop de légendaire si unique, on fallback sur SuperRare si déjà trop
