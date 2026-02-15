@@ -33,22 +33,14 @@ $enemy = $pdo->query("SELECT * FROM cards ORDER BY RAND() LIMIT 1")->fetch();
   <?php if (!$myCards): ?>
     <div class="alert alert-warning">Tu n'as pas de carte. Ouvre d'abord un booster.</div>
   <?php else: ?>
-    <div class="row g-3">
+    <div class="row g-3 battle-cards-row">
       <div class="col-md-5">
         <label class="form-label">Ta carte</label>
-        <select id="myCardSelect" class="form-select mb-2">
-          <?php foreach($myCards as $c): ?>
-            <option value='<?= json_encode($c, JSON_HEX_APOS|JSON_HEX_QUOT) ?>'>
-              <?= htmlspecialchars($c['name']) ?> (<?= htmlspecialchars($c['type']) ?>, PV <?= (int)$c['hp'] ?>)
-            </option>
-          <?php endforeach; ?>
-        </select>
-
         <div id="myCardPreview"></div>
       </div>
 
-      <div class="col-md-2 d-flex align-items-center justify-content-center">
-        <h3>VS</h3>
+      <div class="col-md-2 d-flex align-items-center justify-content-center battle-vs-col">
+        <h3 class="battle-vs-title mb-0">VS</h3>
       </div>
 
       <div class="col-md-5">
@@ -57,16 +49,31 @@ $enemy = $pdo->query("SELECT * FROM cards ORDER BY RAND() LIMIT 1")->fetch();
       </div>
     </div>
 
+    <div class="mt-3">
+      <label class="form-label" for="myCardSelect">Choisir ma carte</label>
+      <select id="myCardSelect" class="form-select">
+        <?php foreach($myCards as $c): ?>
+          <option value='<?= json_encode($c, JSON_HEX_APOS|JSON_HEX_QUOT) ?>'>
+            <?= htmlspecialchars($c['name']) ?> (<?= htmlspecialchars($c['type']) ?>, PV <?= (int)$c['hp'] ?>)
+          </option>
+        <?php endforeach; ?>
+      </select>
+    </div>
+
     <div class="mt-4">
       <div class="d-flex gap-2 flex-wrap">
         <button class="btn btn-success attack-btn" data-slot="1">Attaque 1 (safe)</button>
         <button class="btn btn-danger attack-btn" data-slot="2">Attaque 2 (risquée)</button>
+        <button id="newBattleBtn" class="btn btn-outline-light d-none">Nouveau combat</button>
       </div>
 
-      <div class="roulette-wrap mt-3">
-        <div id="rouletteBar"></div>
+      <div class="roulette-wheel-wrap mt-3">
+        <div id="rouletteWheel" class="roulette-wheel">
+          <div id="rouletteNeedle" class="roulette-needle"></div>
+          <div class="roulette-center"></div>
+        </div>
       </div>
-      <div id="rouletteText" class="small mt-1"></div>
+      <div id="rouletteText" class="small mt-2"></div>
 
       <div class="mt-3 p-3 glass rounded" id="battleLog" style="min-height:120px;"></div>
     </div>
