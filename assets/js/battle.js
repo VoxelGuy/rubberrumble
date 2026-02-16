@@ -12,17 +12,36 @@ function rarityHtml(rarity) {
   return `<span class="rarity-label ${meta.className}">${'⭐'.repeat(meta.stars)} ${rarity || ''}</span>`;
 }
 
-function cardHtml(c, defeated = false) {
+
+
+function typeNameClass(type) {
+  const key = (type || '').toLowerCase();
+  if (key === 'plante') return 'name-type-plante';
+  if (key === 'feu') return 'name-type-feu';
+  if (key === 'eau') return 'name-type-eau';
+  return 'name-type-speciale';
+}
+
+function cardHtml(c, defeated = false, maxHp = null) {
   const typeClass = `type-${(c.type || '').toLowerCase()}`;
+  const nameClass = typeNameClass(c.type);
   const defeatedClass = defeated ? ' defeated-card' : '';
   const img = c.image_path
     ? `<img src="${c.image_path}" alt="">`
     : `<div class="fallback-label">${c.type}</div>`;
 
+  const maxValue = Number(maxHp || c.hp || 1);
+  const hpValue = Math.max(0, Number(c.hp || 0));
+  const hpPct = Math.max(0, Math.min(100, Math.round((hpValue / maxValue) * 100)));
+
   return `
     <div class="tcg-card ${typeClass}${defeatedClass}">
-      <div class="tcg-header">
-        <span>${c.name}</span><span>PV <span class="hp">${c.hp}</span></span>
+      <div class="tcg-header battle-hp-header">
+        <div class="battle-hp-top">
+          <span class="monster-name ${nameClass}">${c.name}</span>
+          <span class="hp-text">PV ${hpValue}/${maxValue}</span>
+        </div>
+        <div class="hp-track"><div class="hp-fill" style="width:${hpPct}%"></div></div>
       </div>
       <div class="tcg-image">${img}</div>
       <div class="tcg-body">
@@ -49,6 +68,8 @@ if (mySelect && enemyWrap && myPreview && logEl) {
 
   let myHp = parseInt(myCard.hp, 10);
   let enemyHp = parseInt(enemy.hp, 10);
+  let myMaxHp = myHp;
+  let enemyMaxHp = enemyHp;
   let myDefeated = false;
   let enemyDefeated = false;
   let battleFinished = false;
@@ -56,8 +77,8 @@ if (mySelect && enemyWrap && myPreview && logEl) {
   function render() {
     myCard.hp = myHp;
     enemy.hp = enemyHp;
-    myPreview.innerHTML = cardHtml(myCard, myDefeated);
-    enemyWrap.innerHTML = cardHtml(enemy, enemyDefeated);
+    myPreview.innerHTML = cardHtml(myCard, myDefeated, myMaxHp);
+    enemyWrap.innerHTML = cardHtml(enemy, enemyDefeated, enemyMaxHp);
   }
 
   function log(msg) {
@@ -188,6 +209,8 @@ if (mySelect && enemyWrap && myPreview && logEl) {
     myHp = parseInt(myCard.hp, 10);
     enemy = JSON.parse(enemyWrap.dataset.enemy);
     enemyHp = parseInt(enemy.hp, 10);
+    myMaxHp = myHp;
+    enemyMaxHp = enemyHp;
     myDefeated = false;
     enemyDefeated = false;
 
