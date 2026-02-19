@@ -6,6 +6,20 @@ $player = $pdo->query("SELECT * FROM players LIMIT 1")->fetch();
 $message = "";
 $pulled = [];
 
+function formatEuros(int $centimes): string {
+    return number_format($centimes / 100, 2, ',', ' ') . ' €';
+}
+
+function rarityMeta(string $rarity): array {
+    return match ($rarity) {
+        'Commun' => ['stars' => 1, 'class' => 'rarity-commun'],
+        'Rare' => ['stars' => 2, 'class' => 'rarity-rare'],
+        'SuperRare' => ['stars' => 3, 'class' => 'rarity-superrare'],
+        'Legendaire' => ['stars' => 4, 'class' => 'rarity-legendaire'],
+        default => ['stars' => 1, 'class' => 'rarity-commun'],
+    };
+}
+
 function pickRarity() {
     $r = mt_rand(1, 100);
     // distribution globale booster
@@ -17,14 +31,14 @@ function pickRarity() {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if ($player['coins'] < 100) {
-        $message = "Pas assez de pièces.";
+    if ($player['coins'] < 10) {
+        $message = "Crédit insuffisant.";
     } else {
         $pdo->beginTransaction();
         try {
-            $pdo->prepare("UPDATE players SET coins = coins - 100 WHERE id = ?")->execute([$player['id']]);
+            $pdo->prepare("UPDATE players SET coins = coins - 10 WHERE id = ?")->execute([$player['id']]);
 
-            for ($i = 0; $i < 5; $i++) {
+            for ($i = 0; $i < 4; $i++) {
                 $rarity = pickRarity();
 
                 // Pour éviter d’avoir trop de légendaire si unique, on fallback sur SuperRare si déjà trop
@@ -38,6 +52,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $card = $stmt->fetch();
                 }
 
+                $ownedBeforeStmt = $pdo->prepare("SELECT quantity FROM player_cards WHERE player_id = ? AND card_id = ?");
+                $ownedBeforeStmt->execute([$player['id'], $card['id']]);
+                $ownedBefore = $ownedBeforeStmt->fetch();
+                $isNew = !$ownedBefore || (int)$ownedBefore['quantity'] === 0;
+
+                $card['_is_new'] = $isNew;
                 $pulled[] = $card;
 
                 $upsert = $pdo->prepare("
@@ -71,10 +91,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <div class="container py-4">
   <a href="index.php" class="btn btn-outline-light mb-3">← Retour</a>
   <h2>🎁 Booster</h2>
-  <div class="mb-3">Pièces: <span class="badge text-bg-warning"><?= (int)$player['coins'] ?></span></div>
+  <div class="mb-3">Crédit: <span class="badge text-bg-warning"><?= formatEuros((int)$player['coins']) ?></span></div>
 
   <form method="post">
-    <button class="btn btn-primary">Ouvrir (100 pièces)</button>
+    <button class="btn btn-primary">Ouvrir (0,10 €)</button>
   </form>
 
   <?php if ($message): ?>
@@ -87,7 +107,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <div class="col-md-4 col-lg-3">
           <div class="tcg-card type-<?= strtolower($c['type']) ?>">
             <div class="tcg-header">
-              <span><?= htmlspecialchars($c['name']) ?></span>
+              <span>
+                <?= htmlspecialchars($c['name']) ?>
+                <?php if (!empty($c['_is_new'])): ?>
+                  <span class="badge text-bg-success ms-1">Nouveau</span>
+                <?php endif; ?>
+              </span>
               <span>PV <?= (int)$c['hp'] ?></span>
             </div>
             <div class="tcg-image">
@@ -98,7 +123,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
               <?php endif; ?>
             </div>
             <div class="tcg-body">
-              <div class="small">⭐ <?= htmlspecialchars($c['rarity']) ?></div>
+              <?php $rarity = rarityMeta($c['rarity']); ?>
+              <div class="small"><span class="rarity-label <?= $rarity['class'] ?>"><?= str_repeat('⭐', (int)$rarity['stars']) ?> <?= htmlspecialchars($c['rarity']) ?></span></div>
               <div><?= htmlspecialchars($c['attack_name_1']) ?> — <?= (int)$c['attack_damage_1'] ?> dmg (<?= (int)$c['attack_success_1'] ?>%)</div>
               <div><?= htmlspecialchars($c['attack_name_2']) ?> — <?= (int)$c['attack_damage_2'] ?> dmg (<?= (int)$c['attack_success_2'] ?>%)</div>
             </div>
