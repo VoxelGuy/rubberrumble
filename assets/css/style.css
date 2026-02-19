@@ -118,20 +118,16 @@ body {
 }
 @media (min-width: 1200px) {
   .battle-page .container {
-    /*padding-left: 390px;*/
-    max-width: 980px;
+    padding-left: 390px;
   }
   .battle-controls-column {
-      position: fixed;
-      left: 0;
-      top: 0;
-      width: 450px;
-      height: 100vh;
-      overflow: auto;
-      background: #131313;
-      padding: 80px 15px;
-      box-sizing: border-box;
-      border-right: 1px solid #3c3c3c;
+    position: fixed;
+    left: 16px;
+    top: 120px;
+    width: 350px;
+    max-height: calc(100vh - 140px);
+    overflow: auto;
+    padding-right: 8px;
   }
 }
 
@@ -185,9 +181,4 @@ body {
   background: #f8f9fa;
   transform: translate(-50%, -50%);
   border: 2px solid #222;
-}
-
-body,
-.battle-page {
-  min-height: 100vh;
 }

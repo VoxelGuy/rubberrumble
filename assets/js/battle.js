@@ -12,8 +12,6 @@ function rarityHtml(rarity) {
   return `<span class="rarity-label ${meta.className}">${'⭐'.repeat(meta.stars)} ${rarity || ''}</span>`;
 }
 
-
-
 function typeNameClass(type) {
   const key = (type || '').toLowerCase();
   if (key === 'plante') return 'name-type-plante';
@@ -46,189 +44,328 @@ function cardHtml(c, defeated = false, maxHp = null) {
       <div class="tcg-image">${img}</div>
       <div class="tcg-body">
         <div class="small">${rarityHtml(c.rarity)}</div>
+        <div>⚡ Vitesse: ${c.speed || 50}</div>
         <div>1) ${c.attack_name_1} — ${c.attack_damage_1} (${c.attack_success_1}%)</div>
         <div>2) ${c.attack_name_2} — ${c.attack_damage_2} (${c.attack_success_2}%)</div>
       </div>
     </div>`;
 }
 
-const mySelect = document.getElementById('myCardSelect');
-const myPreview = document.getElementById('myCardPreview');
-const enemyWrap = document.getElementById('enemyCard');
-const logEl = document.getElementById('battleLog');
-const rouletteWheel = document.getElementById('rouletteWheel');
-const rouletteNeedle = document.getElementById('rouletteNeedle');
-const rouletteText = document.getElementById('rouletteText');
-const attackBtns = document.querySelectorAll('.attack-btn');
-const newBattleBtn = document.getElementById('newBattleBtn');
+function cloneCard(c) {
+  return { ...c, hp: Number(c.hp), maxHp: Number(c.hp), speed: Number(c.speed || 50), dead: false };
+}
 
-if (mySelect && enemyWrap && myPreview && logEl) {
-  let myCard = JSON.parse(mySelect.value);
-  let enemy = JSON.parse(enemyWrap.dataset.enemy);
+function aliveCards(team) {
+  return team.filter((c) => !c.dead);
+}
 
-  let myHp = parseInt(myCard.hp, 10);
-  let enemyHp = parseInt(enemy.hp, 10);
-  let myMaxHp = myHp;
-  let enemyMaxHp = enemyHp;
-  let myDefeated = false;
-  let enemyDefeated = false;
-  let battleFinished = false;
+function randomAliveIndex(team) {
+  const idx = [];
+  team.forEach((c, i) => { if (!c.dead) idx.push(i); });
+  if (!idx.length) return -1;
+  return idx[Math.floor(Math.random() * idx.length)];
+}
 
-  function render() {
-    myCard.hp = myHp;
-    enemy.hp = enemyHp;
-    myPreview.innerHTML = cardHtml(myCard, myDefeated, myMaxHp);
-    enemyWrap.innerHTML = cardHtml(enemy, enemyDefeated, enemyMaxHp);
-  }
+function runWheel(needleEl, textEl, wheelEl, successChance) {
+  return new Promise((resolve) => {
+    const roll = Math.floor(Math.random() * 100) + 1;
+    const ok = roll <= successChance;
+
+    if (!needleEl || !textEl || !wheelEl) {
+      resolve(ok);
+      return;
+    }
+
+    wheelEl.style.setProperty('--success', `${successChance}%`);
+    textEl.textContent = 'Lancement...';
+
+    const resultAngle = (roll / 100) * 360;
+    const spins = 360 * (4 + Math.floor(Math.random() * 3));
+    const finalAngle = spins + resultAngle;
+
+    needleEl.style.transition = 'none';
+    needleEl.style.transform = 'translateX(-50%) rotate(0deg)';
+
+    requestAnimationFrame(() => {
+      needleEl.style.transition = 'transform 1.6s cubic-bezier(0.2, 0.8, 0.2, 1)';
+      needleEl.style.transform = `translateX(-50%) rotate(${finalAngle}deg)`;
+    });
+
+    setTimeout(() => {
+      textEl.textContent = ok
+        ? `✅ Réussi (${roll} <= ${successChance})`
+        : `❌ Raté (${roll} > ${successChance})`;
+      resolve(ok);
+    }, 1700);
+  });
+}
+
+const app = document.getElementById('battleApp');
+if (app) {
+  const myPool = JSON.parse(app.dataset.myPool || '[]').map(cloneCard);
+  const enemyTeam = JSON.parse(app.dataset.enemyTeam || '[]').map(cloneCard);
+
+  let myTeam = [];
+  let selectedIds = new Set();
+  let battleStarted = false;
+  let battleEnded = false;
+  let enemyActiveIdx = 0;
+
+  app.innerHTML = `
+    <div class="battle-cards-wrap mx-auto">
+      <div class="row g-3 battle-cards-row">
+        <div class="col-md-5">
+          <label class="form-label">Ta carte active</label>
+          <div id="myActiveCard"></div>
+        </div>
+        <div class="col-md-2 d-flex align-items-center justify-content-center battle-vs-col">
+          <h3 class="battle-vs-title mb-0">VS</h3>
+        </div>
+        <div class="col-md-5">
+          <label class="form-label">Carte active adverse</label>
+          <div id="enemyActiveCard"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="battle-controls-column">
+      <div class="glass p-3 rounded mb-3">
+        <h5 class="mb-2">Équipe adverse (3)</h5>
+        <div id="enemyTeamPreview" class="small"></div>
+      </div>
+
+      <div class="glass p-3 rounded mb-3">
+        <h5 class="mb-2">Tes 5 cartes (choisir 3)</h5>
+        <div id="myPoolPick" class="small"></div>
+        <button id="startBattleBtn" class="btn btn-primary btn-sm mt-2" disabled>Démarrer le combat</button>
+      </div>
+
+      <label class="form-label" for="activeCardSelect">Changer de carte active</label>
+      <select id="activeCardSelect" class="form-select mb-3" disabled></select>
+
+      <div class="d-flex gap-2 flex-wrap">
+        <button class="btn btn-success attack-btn" data-slot="1" disabled>Attaque 1</button>
+        <button class="btn btn-danger attack-btn" data-slot="2" disabled>Attaque 2</button>
+        <button id="newBattleBtn" class="btn btn-outline-light d-none">Nouveau combat</button>
+      </div>
+
+      <div class="roulette-wheel-wrap mt-3">
+        <div id="rouletteWheel" class="roulette-wheel">
+          <div id="rouletteNeedle" class="roulette-needle"></div>
+          <div class="roulette-center"></div>
+        </div>
+      </div>
+      <div id="rouletteText" class="small mt-2"></div>
+
+      <div class="mt-3 p-3 glass rounded" id="battleLog" style="min-height:160px;"></div>
+    </div>
+  `;
+
+  const myActiveCardEl = document.getElementById('myActiveCard');
+  const enemyActiveCardEl = document.getElementById('enemyActiveCard');
+  const enemyTeamPreview = document.getElementById('enemyTeamPreview');
+  const myPoolPick = document.getElementById('myPoolPick');
+  const startBattleBtn = document.getElementById('startBattleBtn');
+  const activeCardSelect = document.getElementById('activeCardSelect');
+  const attackBtns = document.querySelectorAll('.attack-btn');
+  const newBattleBtn = document.getElementById('newBattleBtn');
+  const rouletteWheel = document.getElementById('rouletteWheel');
+  const rouletteNeedle = document.getElementById('rouletteNeedle');
+  const rouletteText = document.getElementById('rouletteText');
+  const logEl = document.getElementById('battleLog');
 
   function log(msg) {
     logEl.innerHTML = `<div>${msg}</div>` + logEl.innerHTML;
   }
 
-  function setWheelChance(successChance) {
-    if (rouletteWheel) {
-      rouletteWheel.style.setProperty('--success', `${successChance}%`);
+  function getMyActiveIndex() {
+    const val = Number(activeCardSelect.value);
+    if (Number.isNaN(val) || !myTeam[val] || myTeam[val].dead) {
+      return randomAliveIndex(myTeam);
+    }
+    return val;
+  }
+
+  function refreshEnemyPreview() {
+    enemyTeamPreview.innerHTML = enemyTeam
+      .map((c, idx) => `<div>${idx + 1}. ${c.name} (${c.rarity}, ⚡${c.speed})</div>`)
+      .join('');
+  }
+
+  function refreshPickUI() {
+    myPoolPick.innerHTML = myPool.map((c) => {
+      const checked = selectedIds.has(c.id) ? 'checked' : '';
+      const disabled = (!selectedIds.has(c.id) && selectedIds.size >= 3) ? 'disabled' : '';
+      return `<label class="d-block"><input type="checkbox" data-card-id="${c.id}" ${checked} ${disabled}> ${c.name} (${c.rarity}, ⚡${c.speed})</label>`;
+    }).join('');
+
+    myPoolPick.querySelectorAll('input[type="checkbox"]').forEach((el) => {
+      el.addEventListener('change', () => {
+        const id = Number(el.dataset.cardId);
+        if (el.checked) selectedIds.add(id); else selectedIds.delete(id);
+        refreshPickUI();
+        startBattleBtn.disabled = selectedIds.size !== 3;
+      });
+    });
+
+    startBattleBtn.disabled = selectedIds.size !== 3;
+  }
+
+  function refreshSelect() {
+    activeCardSelect.innerHTML = myTeam.map((c, idx) => {
+      const dead = c.dead ? '☠️ ' : '';
+      const disabled = c.dead ? 'disabled' : '';
+      return `<option value="${idx}" ${disabled}>${dead}${c.name} (PV ${c.hp}/${c.maxHp}, ⚡${c.speed})</option>`;
+    }).join('');
+
+    const fallback = randomAliveIndex(myTeam);
+    if (fallback >= 0) activeCardSelect.value = String(fallback);
+  }
+
+  function renderActiveCards() {
+    const myIdx = getMyActiveIndex();
+    if (myIdx >= 0) {
+      const my = myTeam[myIdx];
+      myActiveCardEl.innerHTML = cardHtml(my, my.dead, my.maxHp);
+    }
+
+    if (enemyActiveIdx >= 0 && enemyTeam[enemyActiveIdx]) {
+      const enemy = enemyTeam[enemyActiveIdx];
+      enemyActiveCardEl.innerHTML = cardHtml(enemy, enemy.dead, enemy.maxHp);
     }
   }
 
-  function roulette(successChance) {
-    return new Promise((resolve) => {
-      const roll = Math.floor(Math.random() * 100) + 1;
-      const ok = roll <= successChance;
-
-      if (!rouletteNeedle || !rouletteText) {
-        resolve(ok);
-        return;
-      }
-
-      rouletteText.textContent = 'Lancement...';
-      setWheelChance(successChance);
-
-      const resultAngle = (roll / 100) * 360;
-      const spins = 360 * (4 + Math.floor(Math.random() * 3));
-      const finalAngle = spins + resultAngle;
-
-      rouletteNeedle.style.transition = 'none';
-      rouletteNeedle.style.transform = 'translateX(-50%) rotate(0deg)';
-
-      requestAnimationFrame(() => {
-        rouletteNeedle.style.transition = 'transform 1.6s cubic-bezier(0.2, 0.8, 0.2, 1)';
-        rouletteNeedle.style.transform = `translateX(-50%) rotate(${finalAngle}deg)`;
-      });
-
-      setTimeout(() => {
-        rouletteText.textContent = ok
-          ? `✅ Réussi (${roll} <= ${successChance})`
-          : `❌ Raté (${roll} > ${successChance})`;
-        resolve(ok);
-      }, 1700);
-    });
+  function checkAndAdvanceEnemy() {
+    if (enemyActiveIdx >= 0 && enemyTeam[enemyActiveIdx] && !enemyTeam[enemyActiveIdx].dead) return;
+    enemyActiveIdx = enemyTeam.findIndex((c) => !c.dead);
   }
 
-  async function doAttack(slot) {
-    if (battleFinished || myHp <= 0 || enemyHp <= 0) return;
+  function battleOver() {
+    return aliveCards(myTeam).length === 0 || aliveCards(enemyTeam).length === 0;
+  }
 
-    const dmg = parseInt(myCard[`attack_damage_${slot}`], 10);
-    const succ = parseInt(myCard[`attack_success_${slot}`], 10);
-    const name = myCard[`attack_name_${slot}`];
+  async function performAttack(attacker, defender, slot, label) {
+    const success = Number(attacker[`attack_success_${slot}`]);
+    const damage = Number(attacker[`attack_damage_${slot}`]);
+    const attackName = attacker[`attack_name_${slot}`];
+
+    const ok = await runWheel(rouletteNeedle, rouletteText, rouletteWheel, success);
+    if (!ok) {
+      log(`🔴 ${label} ${attacker.name} rate ${attackName}.`);
+      return;
+    }
+
+    defender.hp = Math.max(0, defender.hp - damage);
+    log(`🟢 ${label} ${attacker.name} utilise ${attackName} et inflige ${damage} dégâts.`);
+    if (defender.hp <= 0) {
+      defender.dead = true;
+      log(`☠️ ${defender.name} est K.O.`);
+    }
+  }
+
+  async function onAttack(slot) {
+    if (!battleStarted || battleEnded) return;
+
+    const myIdx = getMyActiveIndex();
+    if (myIdx < 0 || enemyActiveIdx < 0) return;
+
+    const me = myTeam[myIdx];
+    const foe = enemyTeam[enemyActiveIdx];
 
     attackBtns.forEach((b) => { b.disabled = true; });
+    activeCardSelect.disabled = true;
 
-    const ok = await roulette(succ);
-    if (ok) {
-      enemyHp = Math.max(0, enemyHp - dmg);
-      log(`🟢 ${myCard.name} utilise ${name} et inflige ${dmg} dégâts.`);
+    const myFirst = Number(me.speed) >= Number(foe.speed);
+    if (myFirst) {
+      await performAttack(me, foe, slot, 'Toi:');
+      checkAndAdvanceEnemy();
+      refreshSelect();
+      renderActiveCards();
+      if (!battleOver()) {
+        const aiSlot = Math.random() < 0.65 ? 1 : 2;
+        const myCurrentIdx = getMyActiveIndex();
+        if (myCurrentIdx >= 0 && enemyActiveIdx >= 0) {
+          await performAttack(enemyTeam[enemyActiveIdx], myTeam[myCurrentIdx], aiSlot, 'IA:');
+        }
+      }
     } else {
-      log(`🔴 ${myCard.name} rate ${name}.`);
+      const aiSlot = Math.random() < 0.65 ? 1 : 2;
+      await performAttack(foe, me, aiSlot, 'IA:');
+      if (!battleOver()) {
+        const myCurrentIdx = getMyActiveIndex();
+        if (myCurrentIdx >= 0 && enemyActiveIdx >= 0) {
+          await performAttack(myTeam[myCurrentIdx], enemyTeam[enemyActiveIdx], slot, 'Toi:');
+        }
+      }
     }
 
-    if (enemyHp <= 0) {
-      enemyDefeated = true;
-      render();
-      return endBattle(true);
+    checkAndAdvanceEnemy();
+    refreshSelect();
+    renderActiveCards();
+
+    if (battleOver()) {
+      return endBattle(aliveCards(myTeam).length > 0);
     }
 
-    render();
-
-    const aiSlot = Math.random() < 0.7 ? 1 : 2;
-    const aiDmg = parseInt(enemy[`attack_damage_${aiSlot}`], 10);
-    const aiSucc = parseInt(enemy[`attack_success_${aiSlot}`], 10);
-    const aiName = enemy[`attack_name_${aiSlot}`];
-
-    const aiRoll = Math.floor(Math.random() * 100) + 1;
-    if (aiRoll <= aiSucc) {
-      myHp = Math.max(0, myHp - aiDmg);
-      log(`🔥 IA: ${enemy.name} touche avec ${aiName} (${aiDmg}).`);
-    } else {
-      log(`💨 IA: ${enemy.name} rate ${aiName}.`);
-    }
-
-    if (myHp <= 0) {
-      myDefeated = true;
-      render();
-      return endBattle(false);
-    }
-
-    render();
     attackBtns.forEach((b) => { b.disabled = false; });
+    activeCardSelect.disabled = false;
   }
 
   async function endBattle(win) {
-    battleFinished = true;
+    battleEnded = true;
     attackBtns.forEach((b) => { b.disabled = true; });
-    mySelect.disabled = true;
-    if (newBattleBtn) newBattleBtn.classList.remove('d-none');
+    activeCardSelect.disabled = true;
+    newBattleBtn.classList.remove('d-none');
 
-    log(win ? '🏆 Victoire !' : '💀 Défaite...');
+    log(win ? '🏆 Victoire ! Tu as battu les 3 cartes adverses.' : '💀 Défaite... Tes 3 cartes sont K.O.');
 
     try {
+      const payload = {
+        result: win ? 'WIN' : 'LOSE',
+        team_card_ids: myTeam.map((c) => c.id)
+      };
       const res = await fetch('save_battle.php', {
         method: 'POST',
-        headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({result: win ? 'WIN' : 'LOSE'})
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload)
       });
       const data = await res.json();
       if (data.ok) {
-        log(`💶 Récompense: +${data.delta_label || data.delta}`);
+        if (win) {
+          log(`💶 Récompense: +${data.delta_label || data.delta}`);
+        } else if (data.removed_card_name) {
+          log(`🧨 Défaite: ${data.removed_card_name} a été retirée de ta collection.`);
+        }
       }
     } catch (e) {
       log('Erreur sauvegarde combat.');
     }
   }
 
-  if (newBattleBtn) {
-    newBattleBtn.addEventListener('click', () => {
-      window.location.reload();
-    });
-  }
+  startBattleBtn.addEventListener('click', () => {
+    myTeam = myPool.filter((c) => selectedIds.has(c.id)).map(cloneCard);
+    if (myTeam.length !== 3) return;
 
-  mySelect.addEventListener('change', () => {
-    if (battleFinished) return;
+    battleStarted = true;
+    startBattleBtn.disabled = true;
+    myPoolPick.querySelectorAll('input').forEach((el) => { el.disabled = true; });
 
-    myCard = JSON.parse(mySelect.value);
-    myHp = parseInt(myCard.hp, 10);
-    enemy = JSON.parse(enemyWrap.dataset.enemy);
-    enemyHp = parseInt(enemy.hp, 10);
-    myMaxHp = myHp;
-    enemyMaxHp = enemyHp;
-    myDefeated = false;
-    enemyDefeated = false;
-
+    activeCardSelect.disabled = false;
     attackBtns.forEach((b) => { b.disabled = false; });
-    logEl.innerHTML = '';
-    if (rouletteText) rouletteText.textContent = '';
-    if (rouletteNeedle) {
-      rouletteNeedle.style.transition = 'none';
-      rouletteNeedle.style.transform = 'translateX(-50%) rotate(0deg)';
-    }
-    setWheelChance(parseInt(myCard.attack_success_1, 10));
-    render();
+
+    enemyActiveIdx = enemyTeam.findIndex((c) => !c.dead);
+    refreshSelect();
+    renderActiveCards();
+
+    log('🎯 Combat lancé ! Choisis ta carte active et ton attaque à chaque tour.');
   });
 
   attackBtns.forEach((btn) => {
-    btn.addEventListener('click', () => doAttack(btn.dataset.slot));
+    btn.addEventListener('click', () => onAttack(Number(btn.dataset.slot)));
   });
 
-  setWheelChance(parseInt(myCard.attack_success_1, 10));
-  render();
+  newBattleBtn.addEventListener('click', () => window.location.reload());
+
+  refreshEnemyPreview();
+  refreshPickUI();
 }
