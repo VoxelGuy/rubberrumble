@@ -110,6 +110,7 @@ if (app) {
   let battleStarted = false;
   let battleEnded = false;
   let enemyActiveIdx = 0;
+  let myActiveIdx = -1;
 
   app.innerHTML = `
     <div class="battle-cards-wrap mx-auto">
@@ -179,11 +180,11 @@ if (app) {
   }
 
   function getMyActiveIndex() {
-    const val = Number(activeCardSelect.value);
-    if (Number.isNaN(val) || !myTeam[val] || myTeam[val].dead) {
-      return randomAliveIndex(myTeam);
+    if (myActiveIdx >= 0 && myTeam[myActiveIdx] && !myTeam[myActiveIdx].dead) {
+      return myActiveIdx;
     }
-    return val;
+    myActiveIdx = randomAliveIndex(myTeam);
+    return myActiveIdx;
   }
 
   function refreshEnemyPreview() {
@@ -212,14 +213,22 @@ if (app) {
   }
 
   function refreshSelect() {
+    const previous = myActiveIdx;
     activeCardSelect.innerHTML = myTeam.map((c, idx) => {
       const dead = c.dead ? '☠️ ' : '';
       const disabled = c.dead ? 'disabled' : '';
       return `<option value="${idx}" ${disabled}>${dead}${c.name} (PV ${c.hp}/${c.maxHp}, ⚡${c.speed})</option>`;
     }).join('');
 
-    const fallback = randomAliveIndex(myTeam);
-    if (fallback >= 0) activeCardSelect.value = String(fallback);
+    if (previous >= 0 && myTeam[previous] && !myTeam[previous].dead) {
+      myActiveIdx = previous;
+    } else {
+      myActiveIdx = randomAliveIndex(myTeam);
+    }
+
+    if (myActiveIdx >= 0) {
+      activeCardSelect.value = String(myActiveIdx);
+    }
   }
 
   function renderActiveCards() {
@@ -278,10 +287,11 @@ if (app) {
     const myFirst = Number(me.speed) >= Number(foe.speed);
     if (myFirst) {
       await performAttack(me, foe, slot, 'Toi:');
+      const enemyWasKo = foe.dead;
       checkAndAdvanceEnemy();
       refreshSelect();
       renderActiveCards();
-      if (!battleOver()) {
+      if (!enemyWasKo && !battleOver()) {
         const aiSlot = Math.random() < 0.65 ? 1 : 2;
         const myCurrentIdx = getMyActiveIndex();
         if (myCurrentIdx >= 0 && enemyActiveIdx >= 0) {
@@ -291,7 +301,8 @@ if (app) {
     } else {
       const aiSlot = Math.random() < 0.65 ? 1 : 2;
       await performAttack(foe, me, aiSlot, 'IA:');
-      if (!battleOver()) {
+      const meWasKo = me.dead;
+      if (!meWasKo && !battleOver()) {
         const myCurrentIdx = getMyActiveIndex();
         if (myCurrentIdx >= 0 && enemyActiveIdx >= 0) {
           await performAttack(myTeam[myCurrentIdx], enemyTeam[enemyActiveIdx], slot, 'Toi:');
@@ -354,6 +365,7 @@ if (app) {
     attackBtns.forEach((b) => { b.disabled = false; });
 
     enemyActiveIdx = enemyTeam.findIndex((c) => !c.dead);
+    myActiveIdx = randomAliveIndex(myTeam);
     refreshSelect();
     renderActiveCards();
 
@@ -362,6 +374,14 @@ if (app) {
 
   attackBtns.forEach((btn) => {
     btn.addEventListener('click', () => onAttack(Number(btn.dataset.slot)));
+  });
+
+  activeCardSelect.addEventListener('change', () => {
+    const next = Number(activeCardSelect.value);
+    if (!Number.isNaN(next) && myTeam[next] && !myTeam[next].dead) {
+      myActiveIdx = next;
+      renderActiveCards();
+    }
   });
 
   newBattleBtn.addEventListener('click', () => window.location.reload());
