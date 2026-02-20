@@ -8,6 +8,7 @@ body {
   color: #fff;
 }
 .tcg-card {
+  position: relative;
   border-radius: 14px;
   overflow: hidden;
   border: 1px solid rgba(255,255,255,.15);
@@ -18,22 +19,108 @@ body {
 }
 .tcg-card:hover { transform: translateY(-4px); }
 
+.defeated-card {
+  position: relative;
+}
+.defeated-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(200, 30, 30, 0.42);
+  pointer-events: none;
+}
+
+
 .tcg-header {
   display: flex; justify-content: space-between;
-  padding: .45rem .7rem; font-weight: 700; font-size: .9rem;
+  padding: .5rem .75rem; font-weight: 700; font-size: 1.05rem;
   background: rgba(0,0,0,.25);
 }
+.battle-hp-header {
+  display: block;
+}
+.battle-hp-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: .5rem;
+  margin-bottom: .35rem;
+}
+.monster-name {
+  font-size: 1.1rem;
+  letter-spacing: .2px;
+  text-shadow:
+    -1px -1px 0 #000,
+    1px -1px 0 #000,
+    -1px 1px 0 #000,
+    1px 1px 0 #000;
+}
+.name-type-plante { color: #78d35f; }
+.name-type-feu { color: #ff7a5a; }
+.name-type-eau { color: #66b8ff; }
+.name-type-speciale { color: #e5a2ff; }
+.hp-text {
+  font-size: .92rem;
+  white-space: nowrap;
+}
+.hp-track {
+  width: 100%;
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, .45);
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,.18);
+}
+.hp-fill {
+  height: 100%;
+  width: 100%;
+  background: linear-gradient(90deg, #1fa64d, #35d26a);
+  transition: width .45s ease;
+}
 .tcg-image {
-  height: 310px;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  height: auto;
   display: flex; align-items: center; justify-content: center;
   background: rgba(255,255,255,.08);
 }
-.tcg-image img { width: 100%; height: 100%; object-fit: cover; }
+.tcg-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
 .fallback-label {
   font-size: 1.2rem; font-weight: 700; opacity: .9;
 }
 .tcg-body { padding: .6rem .7rem; font-size: .85rem; }
-.locked { filter: grayscale(1) brightness(0.65); }
+.locked .tcg-image img,
+.locked .fallback-label,
+.locked .tcg-body {
+  filter: blur(20px) grayscale(1) brightness(0.65);
+}
+.locked .tcg-header { opacity: 0.85; }
+
+.rarity-label { font-weight: 700; }
+.rarity-commun { color: #4da3ff; }
+.rarity-rare { color: #b26cff; }
+.rarity-superrare { color: #ff5757; }
+.rarity-legendaire { color: #ff9f1a; }
+
+.battle-cards-row { align-items: stretch; }
+.battle-vs-col { min-height: 100%; }
+.battle-vs-title { opacity: .95; }
+
+.battle-cards-wrap {
+  max-width: 880px;
+}
+.battle-controls-column {
+  max-width: 360px;
+}
+@media (min-width: 768px) {
+  .battle-cards-row > div { display: flex; flex-direction: column; }
+  .battle-cards-row > .battle-vs-col { justify-content: center !important; }
+}
 
 /* Types */
 .type-plante .tcg-image { background: linear-gradient(120deg, #2e7d32, #66bb6a); }
@@ -42,18 +129,140 @@ body {
 .type-speciale .tcg-image { background: linear-gradient(120deg, #4a148c, #ce93d8); }
 
 /* Roulette */
-.roulette-wrap {
-  height: 18px;
-  background: #2a2a2a;
+.roulette-wheel-wrap {
+  display: flex;
+  justify-content: center;
+}
+.roulette-wheel {
+  --success: 50%;
+  width: 160px;
+  aspect-ratio: 1 / 1;
+  border-radius: 50%;
+  position: relative;
+  background: conic-gradient(
+    #2ecc71 0 var(--success),
+    #e74c3c var(--success) 100%
+  );
+  box-shadow: 0 8px 24px rgba(0,0,0,.35);
+}
+.roulette-needle {
+  position: absolute;
+  left: 50%;
+  top: 12%;
+  width: 6px;
+  height: 44%;
+  background: #f8f9fa;
   border-radius: 999px;
-  overflow: hidden;
-  border: 1px solid rgba(255,255,255,.2);
+  transform-origin: 50% 88%;
+  transform: translateX(-50%) rotate(0deg);
+  box-shadow: 0 0 10px rgba(255,255,255,.5);
 }
-#rouletteBar {
-  width: 0%;
-  height: 100%;
-  background: #999;
-  transition: width .05s linear;
+.roulette-center {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #f8f9fa;
+  transform: translate(-50%, -50%);
+  border: 2px solid #222;
 }
-#rouletteBar.success { background: #2ecc71; }
-#rouletteBar.fail { background: #e74c3c; }
+
+
+/* Advanced battle layout */
+.battle-top-panel {
+  margin-left: auto;
+  margin-right: auto;
+}
+.enemy-team-panel {
+  max-width: 782px;
+}
+.battle-team-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+.selectable-card { cursor: pointer; }
+.selectable-card.selected-card {
+  box-shadow: 0 0 0 3px rgba(60, 220, 110, .7), 0 10px 22px rgba(0,0,0,.28);
+  filter: brightness(1.05);
+}
+
+.battle-bench-wrap {
+  max-width: 580px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.battle-bench {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+}
+.bench-slot { cursor: pointer; }
+.bench-slot.dead { cursor: not-allowed; opacity: .8; }
+.bench-card .tcg-image { aspect-ratio: 1 / 1; }
+
+.card-attacks {
+  display: flex;
+  gap: .4rem;
+  flex-wrap: wrap;
+  margin-top: .2rem;
+}
+.card-attack-btn {
+  width: 100%;
+  text-align: left;
+  border-radius: 12px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+.card-attack-btn span {
+  font-size: .82rem;
+  opacity: .9;
+}
+
+.battle-roll-overlay {
+  position: fixed;
+  z-index: 9999;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+.battle-roll-overlay .roulette-wheel {
+  width: 120px;
+}
+
+.is-acting::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,.45);
+  z-index: 4;
+  pointer-events: none;
+}
+.is-acting .tcg-header,
+.is-acting .tcg-image,
+.is-acting .tcg-body { position: relative; z-index: 2; }
+
+.attack-lunge {
+  animation: attackLunge .22s ease;
+}
+.attack-miss::after {
+  content: "Raté";
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(190, 20, 20, .35);
+  color: #fff;
+  font-weight: 800;
+  font-size: 1.4rem;
+  letter-spacing: .3px;
+  z-index: 5;
+  pointer-events: none;
+}
+@keyframes attackLunge {
+  0% { transform: translateX(0); }
+  60% { transform: translateX(8px); }
+  100% { transform: translateX(0); }
+}
