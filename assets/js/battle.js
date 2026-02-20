@@ -35,6 +35,10 @@ function randomAliveIndex(team) {
   return alive[Math.floor(Math.random() * alive.length)];
 }
 
+function wait(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 function cardHtml(c, opts = {}) {
   const {
     defeated = false,
@@ -141,13 +145,14 @@ if (app) {
     <div id="rouletteText" class="small mt-2"></div>
     <div class="mt-3 p-3 glass rounded" id="battleLog" style="min-height:160px;"></div>
 
-    <button id="newBattleBtn" class="btn btn-outline-light d-none mt-3">Nouveau combat</button>
     </div>
 
     <div id="battleResult" class="glass p-4 rounded text-center d-none mt-3">
       <h2 id="battleResultTitle" class="mb-2"></h2>
       <p id="battleResultText" class="mb-0"></p>
     </div>
+
+    <button id="newBattleBtn" class="btn btn-outline-light d-none mt-3">Nouveau combat</button>
 
     <div id="battleRollOverlay" class="battle-roll-overlay d-none" aria-hidden="true">
       <div id="rouletteWheel" class="roulette-wheel">
@@ -336,10 +341,6 @@ if (app) {
         rouletteText.textContent = ok
           ? `✅ Réussi (${roll} <= ${successChance})`
           : `❌ Raté (${roll} > ${successChance})`;
-        if (ok) {
-          cardEl.classList.add('attack-lunge');
-          setTimeout(() => cardEl.classList.remove('attack-lunge'), 260);
-        }
         resolve(ok);
       }, 1700);
     });
@@ -358,10 +359,17 @@ if (app) {
     if (!ok) {
       if (cardEl) {
         cardEl.classList.add('attack-miss');
-        setTimeout(() => cardEl.classList.remove('attack-miss'), 450);
+        await wait(320);
+        cardEl.classList.remove('attack-miss');
       }
       log(`🔴 ${ownerLabel} ${attacker.name} rate ${attackName}.`);
       return;
+    }
+
+    if (cardEl) {
+      cardEl.classList.add('attack-lunge');
+      await wait(220);
+      cardEl.classList.remove('attack-lunge');
     }
 
     defender.hp = Math.max(0, defender.hp - damage);
@@ -434,6 +442,10 @@ if (app) {
 
     log(win ? '🏆 Victoire ! Tu as battu les 3 cartes adverses.' : '💀 Défaite... Tes 3 cartes sont K.O.');
 
+    let resultDetail = win
+      ? 'Victoire ! Tu as battu les 3 cartes adverses.'
+      : 'Défaite... Tes 3 cartes sont K.O.';
+
     try {
       const payload = { result: win ? 'WIN' : 'LOSE', team_card_ids: myTeam.map((c) => c.id) };
       const res = await fetch('save_battle.php', {
@@ -443,8 +455,14 @@ if (app) {
       });
       const data = await res.json();
       if (data.ok) {
-        if (win) log(`💶 Récompense: +${data.delta_label || data.delta}`);
-        else if (data.removed_card_name) log(`🧨 Défaite: ${data.removed_card_name} a été retirée de ta collection.`);
+        if (win) {
+          const gain = data.delta_label || data.delta;
+          log(`💶 Récompense: +${gain}`);
+          resultDetail = `Victoire ! Tu as gagné ${gain}.`;
+        } else if (data.removed_card_name) {
+          log(`🧨 Défaite: ${data.removed_card_name} a été retirée de ta collection.`);
+          resultDetail = `Défaite... Carte perdue : ${data.removed_card_name}.`;
+        }
       }
     } catch (e) {
       log('Erreur sauvegarde combat.');
@@ -454,9 +472,7 @@ if (app) {
     battleResult.classList.remove('d-none');
     battleResultTitle.textContent = win ? 'Gagné' : 'Perdu';
     battleResultTitle.className = win ? 'mb-2 text-success' : 'mb-2 text-danger';
-    battleResultText.textContent = win
-      ? 'Victoire ! Tu as battu les 3 cartes adverses.'
-      : 'Défaite... Tes 3 cartes sont K.O.';
+    battleResultText.textContent = resultDetail;
 
     renderBattlefield();
   }

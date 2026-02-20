@@ -34,8 +34,11 @@ $enemyTeam = $canBattle ? $pdo->query($sqlEnemy)->fetchAll() : [];
 </head>
 <body class="bg-dark text-light battle-page">
 <div class="container py-4">
-  <a href="index.php" class="btn btn-outline-light mb-3">← Retour</a>
-  <h2>⚔️ Combat avancé</h2>
+  <div class="battle-head d-flex align-items-center justify-content-between mb-3">
+    <a href="index.php" class="btn btn-outline-light">← Retour</a>
+    <h2 class="mb-0 text-center flex-grow-1">⚔️ Combat avancé</h2>
+    <span style="width:110px;"></span>
+  </div>
 
   <?php if (!$canBattle): ?>
     <div class="alert alert-warning">

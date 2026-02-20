@@ -8,6 +8,7 @@ body {
   color: #fff;
 }
 .tcg-card {
+  position: relative;
   border-radius: 14px;
   overflow: hidden;
   border: 1px solid rgba(255,255,255,.15);
@@ -111,7 +112,7 @@ body {
 .battle-vs-title { opacity: .95; }
 
 .battle-cards-wrap {
-  max-width: 1080px;
+  max-width: 880px;
 }
 .battle-controls-column {
   max-width: 360px;
@@ -171,12 +172,11 @@ body {
 
 /* Advanced battle layout */
 .battle-top-panel {
-  max-width: 1080px;
   margin-left: auto;
   margin-right: auto;
 }
 .enemy-team-panel {
-  max-width: 648px;
+  max-width: 782px;
 }
 .battle-team-grid {
   display: grid;
@@ -190,7 +190,7 @@ body {
 }
 
 .battle-bench-wrap {
-  max-width: 1080px;
+  max-width: 580px;
   margin-left: auto;
   margin-right: auto;
 }
