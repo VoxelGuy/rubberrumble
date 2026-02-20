@@ -116,21 +116,6 @@ body {
 .battle-controls-column {
   max-width: 360px;
 }
-@media (min-width: 1200px) {
-  .battle-page .container {
-    padding-left: 390px;
-  }
-  .battle-controls-column {
-    position: fixed;
-    left: 16px;
-    top: 120px;
-    width: 350px;
-    max-height: calc(100vh - 140px);
-    overflow: auto;
-    padding-right: 8px;
-  }
-}
-
 @media (min-width: 768px) {
   .battle-cards-row > div { display: flex; flex-direction: column; }
   .battle-cards-row > .battle-vs-col { justify-content: center !important; }
@@ -190,6 +175,9 @@ body {
   margin-left: auto;
   margin-right: auto;
 }
+.enemy-team-panel {
+  max-width: 648px;
+}
 .battle-team-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -222,8 +210,15 @@ body {
   margin-top: .2rem;
 }
 .card-attack-btn {
-  border-radius: 999px;
+  width: 100%;
+  text-align: left;
+  border-radius: 12px;
   font-weight: 700;
+  line-height: 1.2;
+}
+.card-attack-btn span {
+  font-size: .82rem;
+  opacity: .9;
 }
 
 .battle-roll-overlay {
@@ -250,6 +245,21 @@ body {
 
 .attack-lunge {
   animation: attackLunge .22s ease;
+}
+.attack-miss::after {
+  content: "Raté";
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(190, 20, 20, .35);
+  color: #fff;
+  font-weight: 800;
+  font-size: 1.4rem;
+  letter-spacing: .3px;
+  z-index: 5;
+  pointer-events: none;
 }
 @keyframes attackLunge {
   0% { transform: translateX(0); }

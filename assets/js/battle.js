@@ -61,8 +61,12 @@ function cardHtml(c, opts = {}) {
 
   const attacks = showAttackButtons
     ? `
-      <button class="btn btn-sm btn-outline-light card-attack-btn" data-slot="1">${c.attack_name_1}</button>
-      <button class="btn btn-sm btn-outline-light card-attack-btn" data-slot="2">${c.attack_name_2}</button>
+      <button class="btn btn-sm btn-outline-light card-attack-btn" data-slot="1">
+        <strong>${c.attack_name_1}</strong><br><span>${c.attack_damage_1} dmg • ${c.attack_success_1}%</span>
+      </button>
+      <button class="btn btn-sm btn-outline-light card-attack-btn" data-slot="2">
+        <strong>${c.attack_name_2}</strong><br><span>${c.attack_damage_2} dmg • ${c.attack_success_2}%</span>
+      </button>
     `
     : `
       <div>1) ${c.attack_name_1} — ${c.attack_damage_1} (${c.attack_success_1}%)</div>
@@ -101,17 +105,18 @@ if (app) {
   let turnLocked = false;
 
   app.innerHTML = `
-    <div class="battle-top-panel glass p-3 rounded mb-3">
+    <div id="enemyTeamPanel" class="battle-top-panel enemy-team-panel glass p-3 rounded mb-3">
       <h5 class="mb-3 text-center">Équipe adverse</h5>
       <div id="enemyTopTeam" class="battle-team-grid"></div>
     </div>
 
-    <div class="battle-top-panel glass p-3 rounded mb-3">
+    <div id="pickTeamPanel" class="battle-top-panel glass p-3 rounded mb-3">
       <h5 class="mb-3 text-center">Choisissez 3 parmi 5 de vos cartes</h5>
       <div id="mySelectTeam" class="battle-team-grid"></div>
       <div id="pickHint" class="small mt-2"></div>
     </div>
 
+    <div id="battleField" class="d-none">
     <div class="battle-cards-wrap mx-auto">
       <div class="row g-3 battle-cards-row">
         <div class="col-md-5">
@@ -137,6 +142,12 @@ if (app) {
     <div class="mt-3 p-3 glass rounded" id="battleLog" style="min-height:160px;"></div>
 
     <button id="newBattleBtn" class="btn btn-outline-light d-none mt-3">Nouveau combat</button>
+    </div>
+
+    <div id="battleResult" class="glass p-4 rounded text-center d-none mt-3">
+      <h2 id="battleResultTitle" class="mb-2"></h2>
+      <p id="battleResultText" class="mb-0"></p>
+    </div>
 
     <div id="battleRollOverlay" class="battle-roll-overlay d-none" aria-hidden="true">
       <div id="rouletteWheel" class="roulette-wheel">
@@ -147,6 +158,12 @@ if (app) {
   `;
 
   const enemyTopTeamEl = document.getElementById('enemyTopTeam');
+  const enemyTeamPanel = document.getElementById('enemyTeamPanel');
+  const pickTeamPanel = document.getElementById('pickTeamPanel');
+  const battleField = document.getElementById('battleField');
+  const battleResult = document.getElementById('battleResult');
+  const battleResultTitle = document.getElementById('battleResultTitle');
+  const battleResultText = document.getElementById('battleResultText');
   const mySelectTeamEl = document.getElementById('mySelectTeam');
   const pickHintEl = document.getElementById('pickHint');
   const myActiveCardEl = document.getElementById('myActiveCard');
@@ -339,6 +356,10 @@ if (app) {
 
     const ok = await wheelAtCard(cardEl, success);
     if (!ok) {
+      if (cardEl) {
+        cardEl.classList.add('attack-miss');
+        setTimeout(() => cardEl.classList.remove('attack-miss'), 450);
+      }
       log(`🔴 ${ownerLabel} ${attacker.name} rate ${attackName}.`);
       return;
     }
@@ -429,6 +450,14 @@ if (app) {
       log('Erreur sauvegarde combat.');
     }
 
+    battleField.classList.add('d-none');
+    battleResult.classList.remove('d-none');
+    battleResultTitle.textContent = win ? 'Gagné' : 'Perdu';
+    battleResultTitle.className = win ? 'mb-2 text-success' : 'mb-2 text-danger';
+    battleResultText.textContent = win
+      ? 'Victoire ! Tu as battu les 3 cartes adverses.'
+      : 'Défaite... Tes 3 cartes sont K.O.';
+
     renderBattlefield();
   }
 
@@ -438,6 +467,9 @@ if (app) {
     battleStarted = true;
     myActiveIdx = randomAliveIndex(myTeam);
     enemyActiveIdx = enemyTeam.findIndex((c) => !c.dead);
+    enemyTeamPanel.classList.add('d-none');
+    pickTeamPanel.classList.add('d-none');
+    battleField.classList.remove('d-none');
     pickHintEl.textContent = 'Combat en cours !';
     renderSelection();
     renderBattlefield();
