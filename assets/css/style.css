@@ -182,3 +182,77 @@ body {
   transform: translate(-50%, -50%);
   border: 2px solid #222;
 }
+
+
+/* Advanced battle layout */
+.battle-top-panel {
+  max-width: 1080px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.battle-team-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+.selectable-card { cursor: pointer; }
+.selectable-card.selected-card {
+  box-shadow: 0 0 0 3px rgba(60, 220, 110, .7), 0 10px 22px rgba(0,0,0,.28);
+  filter: brightness(1.05);
+}
+
+.battle-bench-wrap {
+  max-width: 1080px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.battle-bench {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+}
+.bench-slot { cursor: pointer; }
+.bench-slot.dead { cursor: not-allowed; opacity: .8; }
+.bench-card .tcg-image { aspect-ratio: 1 / 1; }
+
+.card-attacks {
+  display: flex;
+  gap: .4rem;
+  flex-wrap: wrap;
+  margin-top: .2rem;
+}
+.card-attack-btn {
+  border-radius: 999px;
+  font-weight: 700;
+}
+
+.battle-roll-overlay {
+  position: fixed;
+  z-index: 9999;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+.battle-roll-overlay .roulette-wheel {
+  width: 120px;
+}
+
+.is-acting::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,.45);
+  z-index: 4;
+  pointer-events: none;
+}
+.is-acting .tcg-header,
+.is-acting .tcg-image,
+.is-acting .tcg-body { position: relative; z-index: 2; }
+
+.attack-lunge {
+  animation: attackLunge .22s ease;
+}
+@keyframes attackLunge {
+  0% { transform: translateX(0); }
+  60% { transform: translateX(8px); }
+  100% { transform: translateX(0); }
+}

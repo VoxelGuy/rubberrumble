@@ -20,20 +20,57 @@ function typeNameClass(type) {
   return 'name-type-speciale';
 }
 
-function cardHtml(c, defeated = false, maxHp = null) {
+function cloneCard(c) {
+  return { ...c, hp: Number(c.hp), maxHp: Number(c.hp), speed: Number(c.speed || 50), dead: false };
+}
+
+function aliveCards(team) {
+  return team.filter((c) => !c.dead);
+}
+
+function randomAliveIndex(team) {
+  const alive = [];
+  team.forEach((c, i) => { if (!c.dead) alive.push(i); });
+  if (!alive.length) return -1;
+  return alive[Math.floor(Math.random() * alive.length)];
+}
+
+function cardHtml(c, opts = {}) {
+  const {
+    defeated = false,
+    selectable = false,
+    selected = false,
+    showAttackButtons = false,
+    bench = false,
+  } = opts;
+
   const typeClass = `type-${(c.type || '').toLowerCase()}`;
   const nameClass = typeNameClass(c.type);
   const defeatedClass = defeated ? ' defeated-card' : '';
+  const selectableClass = selectable ? ' selectable-card' : '';
+  const selectedClass = selected ? ' selected-card' : '';
+  const benchClass = bench ? ' bench-card' : '';
+
   const img = c.image_path
     ? `<img src="${c.image_path}" alt="">`
     : `<div class="fallback-label">${c.type}</div>`;
 
-  const maxValue = Number(maxHp || c.hp || 1);
   const hpValue = Math.max(0, Number(c.hp || 0));
+  const maxValue = Math.max(1, Number(c.maxHp || c.hp || 1));
   const hpPct = Math.max(0, Math.min(100, Math.round((hpValue / maxValue) * 100)));
 
+  const attacks = showAttackButtons
+    ? `
+      <button class="btn btn-sm btn-outline-light card-attack-btn" data-slot="1">${c.attack_name_1}</button>
+      <button class="btn btn-sm btn-outline-light card-attack-btn" data-slot="2">${c.attack_name_2}</button>
+    `
+    : `
+      <div>1) ${c.attack_name_1} — ${c.attack_damage_1} (${c.attack_success_1}%)</div>
+      <div>2) ${c.attack_name_2} — ${c.attack_damage_2} (${c.attack_success_2}%)</div>
+    `;
+
   return `
-    <div class="tcg-card ${typeClass}${defeatedClass}">
+    <div class="tcg-card ${typeClass}${defeatedClass}${selectableClass}${selectedClass}${benchClass}">
       <div class="tcg-header battle-hp-header">
         <div class="battle-hp-top">
           <span class="monster-name ${nameClass}">${c.name}</span>
@@ -45,59 +82,9 @@ function cardHtml(c, defeated = false, maxHp = null) {
       <div class="tcg-body">
         <div class="small">${rarityHtml(c.rarity)}</div>
         <div>⚡ Vitesse: ${c.speed || 50}</div>
-        <div>1) ${c.attack_name_1} — ${c.attack_damage_1} (${c.attack_success_1}%)</div>
-        <div>2) ${c.attack_name_2} — ${c.attack_damage_2} (${c.attack_success_2}%)</div>
+        <div class="card-attacks">${attacks}</div>
       </div>
     </div>`;
-}
-
-function cloneCard(c) {
-  return { ...c, hp: Number(c.hp), maxHp: Number(c.hp), speed: Number(c.speed || 50), dead: false };
-}
-
-function aliveCards(team) {
-  return team.filter((c) => !c.dead);
-}
-
-function randomAliveIndex(team) {
-  const idx = [];
-  team.forEach((c, i) => { if (!c.dead) idx.push(i); });
-  if (!idx.length) return -1;
-  return idx[Math.floor(Math.random() * idx.length)];
-}
-
-function runWheel(needleEl, textEl, wheelEl, successChance) {
-  return new Promise((resolve) => {
-    const roll = Math.floor(Math.random() * 100) + 1;
-    const ok = roll <= successChance;
-
-    if (!needleEl || !textEl || !wheelEl) {
-      resolve(ok);
-      return;
-    }
-
-    wheelEl.style.setProperty('--success', `${successChance}%`);
-    textEl.textContent = 'Lancement...';
-
-    const resultAngle = (roll / 100) * 360;
-    const spins = 360 * (4 + Math.floor(Math.random() * 3));
-    const finalAngle = spins + resultAngle;
-
-    needleEl.style.transition = 'none';
-    needleEl.style.transform = 'translateX(-50%) rotate(0deg)';
-
-    requestAnimationFrame(() => {
-      needleEl.style.transition = 'transform 1.6s cubic-bezier(0.2, 0.8, 0.2, 1)';
-      needleEl.style.transform = `translateX(-50%) rotate(${finalAngle}deg)`;
-    });
-
-    setTimeout(() => {
-      textEl.textContent = ok
-        ? `✅ Réussi (${roll} <= ${successChance})`
-        : `❌ Raté (${roll} > ${successChance})`;
-      resolve(ok);
-    }, 1700);
-  });
 }
 
 const app = document.getElementById('battleApp');
@@ -107,12 +94,24 @@ if (app) {
 
   let myTeam = [];
   let selectedIds = new Set();
+  let myActiveIdx = -1;
+  let enemyActiveIdx = 0;
   let battleStarted = false;
   let battleEnded = false;
-  let enemyActiveIdx = 0;
-  let myActiveIdx = -1;
+  let turnLocked = false;
 
   app.innerHTML = `
+    <div class="battle-top-panel glass p-3 rounded mb-3">
+      <h5 class="mb-3 text-center">Équipe adverse</h5>
+      <div id="enemyTopTeam" class="battle-team-grid"></div>
+    </div>
+
+    <div class="battle-top-panel glass p-3 rounded mb-3">
+      <h5 class="mb-3 text-center">Choisissez 3 parmi 5 de vos cartes</h5>
+      <div id="mySelectTeam" class="battle-team-grid"></div>
+      <div id="pickHint" class="small mt-2"></div>
+    </div>
+
     <div class="battle-cards-wrap mx-auto">
       <div class="row g-3 battle-cards-row">
         <div class="col-md-5">
@@ -129,119 +128,81 @@ if (app) {
       </div>
     </div>
 
-    <div class="battle-controls-column">
-      <div class="glass p-3 rounded mb-3">
-        <h5 class="mb-2">Équipe adverse (3)</h5>
-        <div id="enemyTeamPreview" class="small"></div>
+    <div class="battle-bench-wrap mt-3">
+      <h6>Tes autres cartes</h6>
+      <div id="myBench" class="battle-bench"></div>
+    </div>
+
+    <div id="rouletteText" class="small mt-2"></div>
+    <div class="mt-3 p-3 glass rounded" id="battleLog" style="min-height:160px;"></div>
+
+    <button id="newBattleBtn" class="btn btn-outline-light d-none mt-3">Nouveau combat</button>
+
+    <div id="battleRollOverlay" class="battle-roll-overlay d-none" aria-hidden="true">
+      <div id="rouletteWheel" class="roulette-wheel">
+        <div id="rouletteNeedle" class="roulette-needle"></div>
+        <div class="roulette-center"></div>
       </div>
-
-      <div class="glass p-3 rounded mb-3">
-        <h5 class="mb-2">Tes 5 cartes (choisir 3)</h5>
-        <div id="myPoolPick" class="small"></div>
-        <button id="startBattleBtn" class="btn btn-primary btn-sm mt-2" disabled>Démarrer le combat</button>
-      </div>
-
-      <label class="form-label" for="activeCardSelect">Changer de carte active</label>
-      <select id="activeCardSelect" class="form-select mb-3" disabled></select>
-
-      <div class="d-flex gap-2 flex-wrap">
-        <button class="btn btn-success attack-btn" data-slot="1" disabled>Attaque 1</button>
-        <button class="btn btn-danger attack-btn" data-slot="2" disabled>Attaque 2</button>
-        <button id="newBattleBtn" class="btn btn-outline-light d-none">Nouveau combat</button>
-      </div>
-
-      <div class="roulette-wheel-wrap mt-3">
-        <div id="rouletteWheel" class="roulette-wheel">
-          <div id="rouletteNeedle" class="roulette-needle"></div>
-          <div class="roulette-center"></div>
-        </div>
-      </div>
-      <div id="rouletteText" class="small mt-2"></div>
-
-      <div class="mt-3 p-3 glass rounded" id="battleLog" style="min-height:160px;"></div>
     </div>
   `;
 
+  const enemyTopTeamEl = document.getElementById('enemyTopTeam');
+  const mySelectTeamEl = document.getElementById('mySelectTeam');
+  const pickHintEl = document.getElementById('pickHint');
   const myActiveCardEl = document.getElementById('myActiveCard');
   const enemyActiveCardEl = document.getElementById('enemyActiveCard');
-  const enemyTeamPreview = document.getElementById('enemyTeamPreview');
-  const myPoolPick = document.getElementById('myPoolPick');
-  const startBattleBtn = document.getElementById('startBattleBtn');
-  const activeCardSelect = document.getElementById('activeCardSelect');
-  const attackBtns = document.querySelectorAll('.attack-btn');
-  const newBattleBtn = document.getElementById('newBattleBtn');
-  const rouletteWheel = document.getElementById('rouletteWheel');
-  const rouletteNeedle = document.getElementById('rouletteNeedle');
+  const myBenchEl = document.getElementById('myBench');
   const rouletteText = document.getElementById('rouletteText');
   const logEl = document.getElementById('battleLog');
+  const newBattleBtn = document.getElementById('newBattleBtn');
+  const battleRollOverlay = document.getElementById('battleRollOverlay');
+  const rouletteWheel = document.getElementById('rouletteWheel');
+  const rouletteNeedle = document.getElementById('rouletteNeedle');
 
   function log(msg) {
     logEl.innerHTML = `<div>${msg}</div>` + logEl.innerHTML;
   }
 
-  function getMyActiveIndex() {
-    if (myActiveIdx >= 0 && myTeam[myActiveIdx] && !myTeam[myActiveIdx].dead) {
-      return myActiveIdx;
-    }
-    myActiveIdx = randomAliveIndex(myTeam);
-    return myActiveIdx;
-  }
-
-  function refreshEnemyPreview() {
-    enemyTeamPreview.innerHTML = enemyTeam
-      .map((c, idx) => `<div>${idx + 1}. ${c.name} (${c.rarity}, ⚡${c.speed})</div>`)
+  function renderEnemyTop() {
+    enemyTopTeamEl.innerHTML = enemyTeam
+      .map((c) => `<div>${cardHtml(c, { defeated: c.dead })}</div>`)
       .join('');
   }
 
-  function refreshPickUI() {
-    myPoolPick.innerHTML = myPool.map((c) => {
-      const checked = selectedIds.has(c.id) ? 'checked' : '';
-      const disabled = (!selectedIds.has(c.id) && selectedIds.size >= 3) ? 'disabled' : '';
-      return `<label class="d-block"><input type="checkbox" data-card-id="${c.id}" ${checked} ${disabled}> ${c.name} (${c.rarity}, ⚡${c.speed})</label>`;
+  function renderSelection() {
+    mySelectTeamEl.innerHTML = myPool.map((c) => {
+      const selected = selectedIds.has(c.id);
+      return `<div class="pick-slot" data-card-id="${c.id}">${cardHtml(c, { selectable: true, selected })}</div>`;
     }).join('');
 
-    myPoolPick.querySelectorAll('input[type="checkbox"]').forEach((el) => {
-      el.addEventListener('change', () => {
-        const id = Number(el.dataset.cardId);
-        if (el.checked) selectedIds.add(id); else selectedIds.delete(id);
-        refreshPickUI();
-        startBattleBtn.disabled = selectedIds.size !== 3;
+    const left = 3 - selectedIds.size;
+    if (!battleStarted) {
+      pickHintEl.textContent = left > 0
+        ? `Sélectionne encore ${left} carte(s).`
+        : 'Équipe prête. Combat lancé !';
+    }
+
+    mySelectTeamEl.querySelectorAll('.pick-slot').forEach((slot) => {
+      slot.addEventListener('click', () => {
+        if (battleStarted) return;
+        const id = Number(slot.dataset.cardId);
+        if (selectedIds.has(id)) {
+          selectedIds.delete(id);
+        } else if (selectedIds.size < 3) {
+          selectedIds.add(id);
+        }
+        renderSelection();
+        if (selectedIds.size === 3) {
+          startBattle();
+        }
       });
     });
-
-    startBattleBtn.disabled = selectedIds.size !== 3;
   }
 
-  function refreshSelect() {
-    const previous = myActiveIdx;
-    activeCardSelect.innerHTML = myTeam.map((c, idx) => {
-      const dead = c.dead ? '☠️ ' : '';
-      const disabled = c.dead ? 'disabled' : '';
-      return `<option value="${idx}" ${disabled}>${dead}${c.name} (PV ${c.hp}/${c.maxHp}, ⚡${c.speed})</option>`;
-    }).join('');
-
-    if (previous >= 0 && myTeam[previous] && !myTeam[previous].dead) {
-      myActiveIdx = previous;
-    } else {
-      myActiveIdx = randomAliveIndex(myTeam);
-    }
-
-    if (myActiveIdx >= 0) {
-      activeCardSelect.value = String(myActiveIdx);
-    }
-  }
-
-  function renderActiveCards() {
-    const myIdx = getMyActiveIndex();
-    if (myIdx >= 0) {
-      const my = myTeam[myIdx];
-      myActiveCardEl.innerHTML = cardHtml(my, my.dead, my.maxHp);
-    }
-
-    if (enemyActiveIdx >= 0 && enemyTeam[enemyActiveIdx]) {
-      const enemy = enemyTeam[enemyActiveIdx];
-      enemyActiveCardEl.innerHTML = cardHtml(enemy, enemy.dead, enemy.maxHp);
-    }
+  function getMyActiveIndex() {
+    if (myActiveIdx >= 0 && myTeam[myActiveIdx] && !myTeam[myActiveIdx].dead) return myActiveIdx;
+    myActiveIdx = randomAliveIndex(myTeam);
+    return myActiveIdx;
   }
 
   function checkAndAdvanceEnemy() {
@@ -253,139 +214,239 @@ if (app) {
     return aliveCards(myTeam).length === 0 || aliveCards(enemyTeam).length === 0;
   }
 
-  async function performAttack(attacker, defender, slot, label) {
+  function bindAttackButtons() {
+    myActiveCardEl.querySelectorAll('.card-attack-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const slot = Number(btn.dataset.slot);
+        onAttack(slot);
+      });
+    });
+  }
+
+  function renderBench() {
+    if (!battleStarted) {
+      myBenchEl.innerHTML = '<div class="text-muted small">Le banc apparaîtra quand 3 cartes seront sélectionnées.</div>';
+      return;
+    }
+
+    myBenchEl.innerHTML = myTeam
+      .map((c, idx) => ({ c, idx }))
+      .filter(({ idx }) => idx !== myActiveIdx)
+      .map(({ c, idx }) => {
+        const deadClass = c.dead ? ' dead' : '';
+        return `<div class="bench-slot${deadClass}" data-idx="${idx}">${cardHtml(c, { defeated: c.dead, bench: true })}</div>`;
+      })
+      .join('');
+
+    myBenchEl.querySelectorAll('.bench-slot').forEach((el) => {
+      el.addEventListener('click', () => {
+        if (!battleStarted || battleEnded || turnLocked) return;
+        const idx = Number(el.dataset.idx);
+        if (!Number.isNaN(idx) && myTeam[idx] && !myTeam[idx].dead) {
+          myActiveIdx = idx;
+          renderBattlefield();
+        }
+      });
+    });
+  }
+
+  function renderBattlefield() {
+    if (!battleStarted) {
+      myActiveCardEl.innerHTML = '<div class="glass p-3 rounded small">Sélectionne 3 cartes pour commencer.</div>';
+      enemyActiveCardEl.innerHTML = '<div class="glass p-3 rounded small">En attente du début du combat.</div>';
+      renderBench();
+      return;
+    }
+
+    const myIdx = getMyActiveIndex();
+    const my = myTeam[myIdx];
+
+    if (my) {
+      myActiveCardEl.innerHTML = cardHtml(my, {
+        defeated: my.dead,
+        showAttackButtons: !my.dead && !battleEnded && !turnLocked,
+      });
+      bindAttackButtons();
+    }
+
+    checkAndAdvanceEnemy();
+    if (enemyActiveIdx >= 0 && enemyTeam[enemyActiveIdx]) {
+      const enemy = enemyTeam[enemyActiveIdx];
+      enemyActiveCardEl.innerHTML = cardHtml(enemy, { defeated: enemy.dead });
+    } else {
+      enemyActiveCardEl.innerHTML = '<div class="glass p-3 rounded small">Plus de carte adverse.</div>';
+    }
+
+    renderBench();
+    renderEnemyTop();
+  }
+
+  function wheelAtCard(cardEl, successChance) {
+    return new Promise((resolve) => {
+      const roll = Math.floor(Math.random() * 100) + 1;
+      const ok = roll <= successChance;
+
+      if (!cardEl || !rouletteNeedle || !rouletteWheel || !battleRollOverlay) {
+        resolve(ok);
+        return;
+      }
+
+      rouletteText.textContent = 'Lancement...';
+      rouletteWheel.style.setProperty('--success', `${successChance}%`);
+
+      const rect = cardEl.getBoundingClientRect();
+      battleRollOverlay.classList.remove('d-none');
+      battleRollOverlay.style.left = `${rect.left + rect.width / 2}px`;
+      battleRollOverlay.style.top = `${rect.top + rect.height / 2}px`;
+
+      cardEl.classList.add('is-acting');
+
+      const resultAngle = (roll / 100) * 360;
+      const spins = 360 * (4 + Math.floor(Math.random() * 3));
+      const finalAngle = spins + resultAngle;
+
+      rouletteNeedle.style.transition = 'none';
+      rouletteNeedle.style.transform = 'translateX(-50%) rotate(0deg)';
+
+      requestAnimationFrame(() => {
+        rouletteNeedle.style.transition = 'transform 1.6s cubic-bezier(0.2, 0.8, 0.2, 1)';
+        rouletteNeedle.style.transform = `translateX(-50%) rotate(${finalAngle}deg)`;
+      });
+
+      setTimeout(() => {
+        battleRollOverlay.classList.add('d-none');
+        cardEl.classList.remove('is-acting');
+        rouletteText.textContent = ok
+          ? `✅ Réussi (${roll} <= ${successChance})`
+          : `❌ Raté (${roll} > ${successChance})`;
+        if (ok) {
+          cardEl.classList.add('attack-lunge');
+          setTimeout(() => cardEl.classList.remove('attack-lunge'), 260);
+        }
+        resolve(ok);
+      }, 1700);
+    });
+  }
+
+  async function performAttack(attacker, defender, slot, ownerLabel, owner) {
     const success = Number(attacker[`attack_success_${slot}`]);
     const damage = Number(attacker[`attack_damage_${slot}`]);
     const attackName = attacker[`attack_name_${slot}`];
 
-    const ok = await runWheel(rouletteNeedle, rouletteText, rouletteWheel, success);
+    const cardEl = owner === 'my'
+      ? myActiveCardEl.querySelector('.tcg-card')
+      : enemyActiveCardEl.querySelector('.tcg-card');
+
+    const ok = await wheelAtCard(cardEl, success);
     if (!ok) {
-      log(`🔴 ${label} ${attacker.name} rate ${attackName}.`);
+      log(`🔴 ${ownerLabel} ${attacker.name} rate ${attackName}.`);
       return;
     }
 
     defender.hp = Math.max(0, defender.hp - damage);
-    log(`🟢 ${label} ${attacker.name} utilise ${attackName} et inflige ${damage} dégâts.`);
+    log(`🟢 ${ownerLabel} ${attacker.name} utilise ${attackName} et inflige ${damage} dégâts.`);
+
+    renderBattlefield();
+
     if (defender.hp <= 0) {
       defender.dead = true;
       log(`☠️ ${defender.name} est K.O.`);
+      renderBattlefield();
     }
   }
 
   async function onAttack(slot) {
-    if (!battleStarted || battleEnded) return;
+    if (!battleStarted || battleEnded || turnLocked) return;
 
     const myIdx = getMyActiveIndex();
     if (myIdx < 0 || enemyActiveIdx < 0) return;
 
+    turnLocked = true;
+    renderBattlefield();
+
     const me = myTeam[myIdx];
     const foe = enemyTeam[enemyActiveIdx];
-
-    attackBtns.forEach((b) => { b.disabled = true; });
-    activeCardSelect.disabled = true;
-
     const myFirst = Number(me.speed) >= Number(foe.speed);
+
     if (myFirst) {
-      await performAttack(me, foe, slot, 'Toi:');
+      await performAttack(me, foe, slot, 'Toi:', 'my');
       const enemyWasKo = foe.dead;
       checkAndAdvanceEnemy();
-      refreshSelect();
-      renderActiveCards();
+      renderBattlefield();
+
       if (!enemyWasKo && !battleOver()) {
         const aiSlot = Math.random() < 0.65 ? 1 : 2;
         const myCurrentIdx = getMyActiveIndex();
         if (myCurrentIdx >= 0 && enemyActiveIdx >= 0) {
-          await performAttack(enemyTeam[enemyActiveIdx], myTeam[myCurrentIdx], aiSlot, 'IA:');
+          await performAttack(enemyTeam[enemyActiveIdx], myTeam[myCurrentIdx], aiSlot, 'IA:', 'enemy');
         }
       }
     } else {
       const aiSlot = Math.random() < 0.65 ? 1 : 2;
-      await performAttack(foe, me, aiSlot, 'IA:');
+      await performAttack(foe, me, aiSlot, 'IA:', 'enemy');
       const meWasKo = me.dead;
+
       if (!meWasKo && !battleOver()) {
         const myCurrentIdx = getMyActiveIndex();
         if (myCurrentIdx >= 0 && enemyActiveIdx >= 0) {
-          await performAttack(myTeam[myCurrentIdx], enemyTeam[enemyActiveIdx], slot, 'Toi:');
+          await performAttack(myTeam[myCurrentIdx], enemyTeam[enemyActiveIdx], slot, 'Toi:', 'my');
         }
       }
     }
 
     checkAndAdvanceEnemy();
-    refreshSelect();
-    renderActiveCards();
+    renderBattlefield();
 
     if (battleOver()) {
-      return endBattle(aliveCards(myTeam).length > 0);
+      await endBattle(aliveCards(myTeam).length > 0);
+      return;
     }
 
-    attackBtns.forEach((b) => { b.disabled = false; });
-    activeCardSelect.disabled = false;
+    turnLocked = false;
+    renderBattlefield();
   }
 
   async function endBattle(win) {
     battleEnded = true;
-    attackBtns.forEach((b) => { b.disabled = true; });
-    activeCardSelect.disabled = true;
+    turnLocked = false;
     newBattleBtn.classList.remove('d-none');
 
     log(win ? '🏆 Victoire ! Tu as battu les 3 cartes adverses.' : '💀 Défaite... Tes 3 cartes sont K.O.');
 
     try {
-      const payload = {
-        result: win ? 'WIN' : 'LOSE',
-        team_card_ids: myTeam.map((c) => c.id)
-      };
+      const payload = { result: win ? 'WIN' : 'LOSE', team_card_ids: myTeam.map((c) => c.id) };
       const res = await fetch('save_battle.php', {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify(payload)
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (data.ok) {
-        if (win) {
-          log(`💶 Récompense: +${data.delta_label || data.delta}`);
-        } else if (data.removed_card_name) {
-          log(`🧨 Défaite: ${data.removed_card_name} a été retirée de ta collection.`);
-        }
+        if (win) log(`💶 Récompense: +${data.delta_label || data.delta}`);
+        else if (data.removed_card_name) log(`🧨 Défaite: ${data.removed_card_name} a été retirée de ta collection.`);
       }
     } catch (e) {
       log('Erreur sauvegarde combat.');
     }
+
+    renderBattlefield();
   }
 
-  startBattleBtn.addEventListener('click', () => {
+  function startBattle() {
+    if (battleStarted || selectedIds.size !== 3) return;
     myTeam = myPool.filter((c) => selectedIds.has(c.id)).map(cloneCard);
-    if (myTeam.length !== 3) return;
-
     battleStarted = true;
-    startBattleBtn.disabled = true;
-    myPoolPick.querySelectorAll('input').forEach((el) => { el.disabled = true; });
-
-    activeCardSelect.disabled = false;
-    attackBtns.forEach((b) => { b.disabled = false; });
-
-    enemyActiveIdx = enemyTeam.findIndex((c) => !c.dead);
     myActiveIdx = randomAliveIndex(myTeam);
-    refreshSelect();
-    renderActiveCards();
-
-    log('🎯 Combat lancé ! Choisis ta carte active et ton attaque à chaque tour.');
-  });
-
-  attackBtns.forEach((btn) => {
-    btn.addEventListener('click', () => onAttack(Number(btn.dataset.slot)));
-  });
-
-  activeCardSelect.addEventListener('change', () => {
-    const next = Number(activeCardSelect.value);
-    if (!Number.isNaN(next) && myTeam[next] && !myTeam[next].dead) {
-      myActiveIdx = next;
-      renderActiveCards();
-    }
-  });
+    enemyActiveIdx = enemyTeam.findIndex((c) => !c.dead);
+    pickHintEl.textContent = 'Combat en cours !';
+    renderSelection();
+    renderBattlefield();
+    log('🎯 Combat lancé ! Clique sur le nom d’une attaque sur ta carte active.');
+  }
 
   newBattleBtn.addEventListener('click', () => window.location.reload());
 
-  refreshEnemyPreview();
-  refreshPickUI();
+  renderEnemyTop();
+  renderSelection();
+  renderBattlefield();
 }
