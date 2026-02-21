@@ -24,6 +24,19 @@ function cloneCard(c) {
   return { ...c, hp: Number(c.hp), maxHp: Number(c.hp), speed: Number(c.speed || 50), dead: false };
 }
 
+function getTypeMultiplier(attackType, defendType) {
+  const atk = (attackType || '').toLowerCase();
+  const def = (defendType || '').toLowerCase();
+  if (atk === 'speciale' || def === 'speciale') return 1;
+  if (atk === 'eau' && def === 'feu') return 2;
+  if (atk === 'feu' && def === 'plante') return 2;
+  if (atk === 'plante' && def === 'eau') return 2;
+  if (atk === 'feu' && def === 'eau') return 0.5;
+  if (atk === 'plante' && def === 'feu') return 0.5;
+  if (atk === 'eau' && def === 'plante') return 0.5;
+  return 1;
+}
+
 function aliveCards(team) {
   return team.filter((c) => !c.dead);
 }
@@ -46,6 +59,7 @@ function cardHtml(c, opts = {}) {
     selected = false,
     showAttackButtons = false,
     bench = false,
+    hideAttacks = false,
   } = opts;
 
   const typeClass = `type-${(c.type || '').toLowerCase()}`;
@@ -63,7 +77,9 @@ function cardHtml(c, opts = {}) {
   const maxValue = Math.max(1, Number(c.maxHp || c.hp || 1));
   const hpPct = Math.max(0, Math.min(100, Math.round((hpValue / maxValue) * 100)));
 
-  const attacks = showAttackButtons
+  const attacks = hideAttacks
+    ? ''
+    : showAttackButtons
     ? `
       <button class="btn btn-sm btn-outline-light card-attack-btn" data-slot="1">
         <strong>${c.attack_name_1}</strong><br><span>${c.attack_damage_1} dmg • ${c.attack_success_1}%</span>
@@ -109,41 +125,39 @@ if (app) {
   let turnLocked = false;
 
   app.innerHTML = `
-    <div id="enemyTeamPanel" class="battle-top-panel enemy-team-panel glass p-3 rounded mb-3">
-      <h5 class="mb-3 text-center">Équipe adverse</h5>
+    <div id="enemyTeamPanel" class="battle-top-panel enemy-team-panel glass p-2 rounded mb-2">
+      <h6 class="mb-2 text-center">Équipe adverse</h6>
       <div id="enemyTopTeam" class="battle-team-grid"></div>
     </div>
 
-    <div id="pickTeamPanel" class="battle-top-panel glass p-3 rounded mb-3">
-      <h5 class="mb-3 text-center">Choisissez 3 parmi 5 de vos cartes</h5>
+    <div id="pickTeamPanel" class="battle-top-panel glass p-2 rounded mb-2">
+      <h6 class="mb-2 text-center">Choisissez 3 parmi 5 de vos cartes</h6>
       <div id="mySelectTeam" class="battle-team-grid"></div>
       <div id="pickHint" class="small mt-2"></div>
     </div>
 
     <div id="battleField" class="d-none">
+    <div id="enemyReserve" class="reserve-strip reserve-top"></div>
     <div class="battle-cards-wrap mx-auto">
       <div class="row g-3 battle-cards-row">
-        <div class="col-md-5">
+        <div class="col-5">
           <label class="form-label">Ta carte active</label>
           <div id="myActiveCard"></div>
         </div>
-        <div class="col-md-2 d-flex align-items-center justify-content-center battle-vs-col">
+        <div class="col-2 d-flex align-items-center justify-content-center battle-vs-col">
           <h3 class="battle-vs-title mb-0">VS</h3>
         </div>
-        <div class="col-md-5">
+        <div class="col-5">
           <label class="form-label">Carte active adverse</label>
           <div id="enemyActiveCard"></div>
         </div>
       </div>
     </div>
 
-    <div class="battle-bench-wrap mt-3">
-      <h6>Tes autres cartes</h6>
-      <div id="myBench" class="battle-bench"></div>
-    </div>
+    <div id="myBench" class="battle-bench reserve-strip reserve-bottom"></div>
 
     <div id="rouletteText" class="small mt-2"></div>
-    <div class="mt-3 p-3 glass rounded" id="battleLog" style="min-height:160px;"></div>
+    <div class="mt-2 p-2 glass rounded" id="battleLog" style="min-height:110px;"></div>
 
     </div>
 
@@ -180,6 +194,7 @@ if (app) {
   const battleRollOverlay = document.getElementById('battleRollOverlay');
   const rouletteWheel = document.getElementById('rouletteWheel');
   const rouletteNeedle = document.getElementById('rouletteNeedle');
+  const enemyReserveEl = document.getElementById('enemyReserve');
 
   function log(msg) {
     logEl.innerHTML = `<div>${msg}</div>` + logEl.innerHTML;
@@ -187,7 +202,19 @@ if (app) {
 
   function renderEnemyTop() {
     enemyTopTeamEl.innerHTML = enemyTeam
-      .map((c) => `<div>${cardHtml(c, { defeated: c.dead })}</div>`)
+      .map((c) => `<div>${cardHtml(c, { defeated: c.dead, hideAttacks: true })}</div>`)
+      .join('');
+  }
+
+  function renderEnemyReserve() {
+    if (!battleStarted || enemyActiveIdx < 0) {
+      enemyReserveEl.innerHTML = '';
+      return;
+    }
+    enemyReserveEl.innerHTML = enemyTeam
+      .map((c, idx) => ({ c, idx }))
+      .filter(({ idx }) => idx !== enemyActiveIdx)
+      .map(({ c }) => `<div class="reserve-slot enemy-reserve${c.dead ? ' dead' : ''}">${cardHtml(c, { defeated: c.dead, bench: true, hideAttacks: true })}</div>`)
       .join('');
   }
 
@@ -247,7 +274,7 @@ if (app) {
 
   function renderBench() {
     if (!battleStarted) {
-      myBenchEl.innerHTML = '<div class="text-muted small">Le banc apparaîtra quand 3 cartes seront sélectionnées.</div>';
+      myBenchEl.innerHTML = '';
       return;
     }
 
@@ -256,7 +283,7 @@ if (app) {
       .filter(({ idx }) => idx !== myActiveIdx)
       .map(({ c, idx }) => {
         const deadClass = c.dead ? ' dead' : '';
-        return `<div class="bench-slot${deadClass}" data-idx="${idx}">${cardHtml(c, { defeated: c.dead, bench: true })}</div>`;
+        return `<div class="bench-slot${deadClass}" data-idx="${idx}">${cardHtml(c, { defeated: c.dead, bench: true, hideAttacks: true })}</div>`;
       })
       .join('');
 
@@ -294,13 +321,14 @@ if (app) {
     checkAndAdvanceEnemy();
     if (enemyActiveIdx >= 0 && enemyTeam[enemyActiveIdx]) {
       const enemy = enemyTeam[enemyActiveIdx];
-      enemyActiveCardEl.innerHTML = cardHtml(enemy, { defeated: enemy.dead });
+      enemyActiveCardEl.innerHTML = cardHtml(enemy, { defeated: enemy.dead, hideAttacks: true });
     } else {
       enemyActiveCardEl.innerHTML = '<div class="glass p-3 rounded small">Plus de carte adverse.</div>';
     }
 
     renderBench();
     renderEnemyTop();
+    renderEnemyReserve();
   }
 
   function wheelAtCard(cardEl, successChance) {
@@ -372,8 +400,23 @@ if (app) {
       cardEl.classList.remove('attack-lunge');
     }
 
-    defender.hp = Math.max(0, defender.hp - damage);
-    log(`🟢 ${ownerLabel} ${attacker.name} utilise ${attackName} et inflige ${damage} dégâts.`);
+    const multiplier = getTypeMultiplier(attacker.type, defender.type);
+    const finalDamage = Math.max(1, Math.round(damage * multiplier));
+
+    if (cardEl && multiplier > 1) {
+      cardEl.classList.add('attack-super-effective');
+      await wait(480);
+      cardEl.classList.remove('attack-super-effective');
+    }
+    if (cardEl && multiplier < 1) {
+      cardEl.classList.add('attack-not-effective');
+      await wait(420);
+      cardEl.classList.remove('attack-not-effective');
+    }
+
+    defender.hp = Math.max(0, defender.hp - finalDamage);
+    const effectMsg = multiplier > 1 ? ' (Très efficace x2)' : multiplier < 1 ? ' (Pas très efficace x0,5)' : '';
+    log(`🟢 ${ownerLabel} ${attacker.name} utilise ${attackName} et inflige ${finalDamage} dégâts.${effectMsg}`);
 
     renderBattlefield();
 
@@ -477,15 +520,19 @@ if (app) {
     renderBattlefield();
   }
 
-  function startBattle() {
+  async function startBattle() {
     if (battleStarted || selectedIds.size !== 3) return;
     myTeam = myPool.filter((c) => selectedIds.has(c.id)).map(cloneCard);
     battleStarted = true;
     myActiveIdx = randomAliveIndex(myTeam);
     enemyActiveIdx = enemyTeam.findIndex((c) => !c.dead);
+    app.classList.add('battle-transitioning');
+    await wait(650);
     enemyTeamPanel.classList.add('d-none');
     pickTeamPanel.classList.add('d-none');
     battleField.classList.remove('d-none');
+    app.classList.remove('battle-transitioning');
+    app.classList.add('battle-live');
     pickHintEl.textContent = 'Combat en cours !';
     renderSelection();
     renderBattlefield();
