@@ -290,8 +290,15 @@ body {
   height: 100%;
   gap: .45rem;
 }
-.enemy-team-panel { max-width: 690px; }
-#pickTeamPanel { max-width: 900px; }
+.battle-top-panel {
+  width: min(100%, 900px);
+}
+.enemy-team-panel {
+  width: min(100%, 782px);
+}
+#pickTeamPanel {
+  width: min(100%, 980px);
+}
 .battle-team-grid {
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: 8px;
@@ -306,6 +313,8 @@ body {
 }
 .battle-cards-wrap {
   max-width: 660px;
+  position: relative;
+  z-index: 2;
 }
 .battle-cards-wrap .tcg-card { max-width: 290px; margin: 0 auto; }
 .reserve-strip {
@@ -316,12 +325,13 @@ body {
   justify-content: center;
   gap: 14px;
   pointer-events: none;
+  z-index: 3;
 }
 .reserve-top {
-  top: -90px;
+  top: -148px;
 }
 .reserve-bottom {
-  bottom: -100px;
+  bottom: -138px;
   pointer-events: auto;
 }
 .reserve-slot {
@@ -333,20 +343,21 @@ body {
 }
 .reserve-bottom .bench-slot {
   width: 160px;
-  transform: translateY(26%);
+  transform: translateY(28%);
   transition: transform .25s ease;
 }
 .reserve-bottom .bench-slot:hover {
   transform: translateY(0);
 }
-.reserve-bottom .tcg-body,
 .reserve-top .tcg-body { display: none; }
 #battleLog {
-  max-width: 700px;
-  margin-left: auto;
-  margin-right: auto;
-  max-height: 140px;
+  position: fixed;
+  right: 14px;
+  bottom: 12px;
+  width: min(360px, calc(100vw - 20px));
+  max-height: 170px;
   overflow: auto;
+  z-index: 25;
 }
 .card-attacks:empty { display: none; }
 
@@ -388,4 +399,14 @@ body {
   .battle-cards-wrap .tcg-card { max-width: 100%; }
   .reserve-slot,
   .reserve-bottom .bench-slot { width: 125px; }
+  .reserve-top {
+    top: -120px;
+  }
+  .reserve-bottom {
+    bottom: -120px;
+  }
+  #battleLog {
+    width: min(320px, calc(100vw - 20px));
+    max-height: 145px;
+  }
 }
