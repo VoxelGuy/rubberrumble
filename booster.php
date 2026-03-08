@@ -30,6 +30,16 @@ function pickRarity() {
     return 'Legendaire';
 }
 
+
+function typeEmoji(string $type): string {
+    return match ($type) {
+        'Plante' => '🌿',
+        'Feu' => '🔥',
+        'Eau' => '💧',
+        'Speciale' => '✨',
+        default => '❓',
+    };
+}
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($player['coins'] < 10) {
         $message = "Crédit insuffisant.";
@@ -102,37 +112,70 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <?php endif; ?>
 
   <?php if ($pulled): ?>
-    <div class="row g-3 mt-1">
+    <div class="row g-4 mt-1">
       <?php foreach ($pulled as $c): ?>
-        <div class="col-md-4 col-lg-3">
-          <div class="tcg-card type-<?= strtolower($c['type']) ?>">
-            <div class="tcg-header">
-              <span>
-                <?= htmlspecialchars($c['name']) ?>
-                <?php if (!empty($c['_is_new'])): ?>
-                  <span class="badge text-bg-success ms-1">Nouveau</span>
-                <?php endif; ?>
-              </span>
-              <span>PV <?= (int)$c['hp'] ?></span>
-            </div>
-            <div class="tcg-image">
+        <?php $rarity = rarityMeta($c['rarity']); ?>
+        <div class="col-sm-6 col-lg-3">
+          <article class="tcg-card tcg-card-v2 card3d-v2" data-tilt-v2>
+            <div class="tcg-card-v2-inner type-<?= strtolower($c['type']) ?>">
               <?php if (!empty($c['image_path'])): ?>
-                <img src="<?= htmlspecialchars($c['image_path']) ?>" alt="">
-              <?php else: ?>
-                <div class="fallback-label"><?= htmlspecialchars($c['type']) ?></div>
+                <img class="card-v2-bg" src="<?= htmlspecialchars($c['image_path']) ?>" alt="<?= htmlspecialchars($c['name']) ?>">
               <?php endif; ?>
+
+              <div class="card-v2-top">
+                <div class="card-chip card-name">
+                  <?= htmlspecialchars($c['name']) ?>
+                  <?php if (!empty($c['_is_new'])): ?>
+                    <span class="badge text-bg-success ms-1">Nouveau</span>
+                  <?php endif; ?>
+                </div>
+                <div class="card-chip card-stats">PV <?= (int)$c['hp'] ?> <span class="type-bubble" title="<?= htmlspecialchars($c['type']) ?>"><?= typeEmoji($c['type']) ?></span></div>
+              </div>
+
+              <div class="card-v2-bottom">
+                <div class="card-v2-meta-row">
+                  <div class="card-chip <?= $rarity['class'] ?>"><?= str_repeat('⭐', (int)$rarity['stars']) ?> <?= htmlspecialchars($c['rarity']) ?></div>
+                  <div class="card-chip">⚡ <?= (int)($c['speed'] ?? 50) ?></div>
+                </div>
+                <div class="card-v2-attacks">
+                  <div class="card-attack-v2"><?= htmlspecialchars($c['attack_name_1']) ?> <span><?= (int)$c['attack_damage_1'] ?> • <?= (int)$c['attack_success_1'] ?>%</span></div>
+                  <div class="card-attack-v2"><?= htmlspecialchars($c['attack_name_2']) ?> <span><?= (int)$c['attack_damage_2'] ?> • <?= (int)$c['attack_success_2'] ?>%</span></div>
+                </div>
+              </div>
             </div>
-            <div class="tcg-body">
-              <?php $rarity = rarityMeta($c['rarity']); ?>
-              <div class="small"><span class="rarity-label <?= $rarity['class'] ?>"><?= str_repeat('⭐', (int)$rarity['stars']) ?> <?= htmlspecialchars($c['rarity']) ?></span></div>
-              <div><?= htmlspecialchars($c['attack_name_1']) ?> — <?= (int)$c['attack_damage_1'] ?> dmg (<?= (int)$c['attack_success_1'] ?>%)</div>
-              <div><?= htmlspecialchars($c['attack_name_2']) ?> — <?= (int)$c['attack_damage_2'] ?> dmg (<?= (int)$c['attack_success_2'] ?>%)</div>
-            </div>
-          </div>
+          </article>
         </div>
       <?php endforeach; ?>
     </div>
   <?php endif; ?>
 </div>
+<script>
+(() => {
+  const MAX_TILT = 18;
+  const cards = document.querySelectorAll('[data-tilt-v2]');
+  const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
+
+  cards.forEach((card) => {
+    const inner = card.querySelector('.tcg-card-v2-inner');
+    card.addEventListener('mousemove', (e) => {
+      const r = card.getBoundingClientRect();
+      const px = (e.clientX - r.left) / r.width;
+      const py = (e.clientY - r.top) / r.height;
+      const rx = clamp((-(py - 0.5) * 2 * MAX_TILT), -MAX_TILT, MAX_TILT);
+      const ry = clamp((((px - 0.5) * 2) * MAX_TILT), -MAX_TILT, MAX_TILT);
+      inner.style.setProperty('--rx', `${rx.toFixed(2)}deg`);
+      inner.style.setProperty('--ry', `${ry.toFixed(2)}deg`);
+      inner.style.setProperty('--sx', `${(px * 100).toFixed(1)}%`);
+      inner.style.setProperty('--sy', `${(py * 100).toFixed(1)}%`);
+    });
+    card.addEventListener('mouseleave', () => {
+      inner.style.setProperty('--rx', '0deg');
+      inner.style.setProperty('--ry', '0deg');
+      inner.style.setProperty('--sx', '50%');
+      inner.style.setProperty('--sy', '50%');
+    });
+  });
+})();
+</script>
 </body>
 </html>
