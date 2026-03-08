@@ -116,7 +116,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       <?php foreach ($pulled as $c): ?>
         <?php $rarity = rarityMeta($c['rarity']); ?>
         <div class="col-sm-6 col-lg-3">
-          <article class="tcg-card tcg-card-v2 card3d-v2" data-tilt-v2>
+          <article class="tcg-card-v2 card3d-v2" data-tilt-v2>
             <div class="tcg-card-v2-inner type-<?= strtolower($c['type']) ?>">
               <?php if (!empty($c['image_path'])): ?>
                 <img class="card-v2-bg" src="<?= htmlspecialchars($c['image_path']) ?>" alt="<?= htmlspecialchars($c['name']) ?>">

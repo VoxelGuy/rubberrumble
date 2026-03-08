@@ -323,7 +323,8 @@ body {
   position: relative;
   z-index: 2;
 }
-.battle-cards-wrap .tcg-card { max-width: 290px; margin: 0 auto; }
+.battle-cards-wrap .tcg-card,
+.battle-cards-wrap .tcg-card-v2 { max-width: 290px; margin: 0 auto; }
 .reserve-strip {
   position: absolute;
   left: 0;
@@ -411,7 +412,8 @@ body {
 @media (max-width: 767px) {
   .battle-cards-wrap { max-width: 100%; }
   .battle-cards-row { align-items: center; }
-  .battle-cards-wrap .tcg-card { max-width: 100%; }
+  .battle-cards-wrap .tcg-card,
+  .battle-cards-wrap .tcg-card-v2 { max-width: 100%; }
   .reserve-slot,
   .reserve-bottom .bench-slot { width: 145px; }
   .reserve-top {

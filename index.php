@@ -27,7 +27,7 @@ function formatEuros(int $centimes): string {
   </div>
 
   <div class="row g-3">
-    <div class="col-md-6 col-lg-3">
+    <div class="col-md-6 col-lg-4">
       <div class="card glass h-100">
         <div class="card-body">
           <h5>Booster</h5>
@@ -37,7 +37,7 @@ function formatEuros(int $centimes): string {
       </div>
     </div>
 
-    <div class="col-md-6 col-lg-3">
+    <div class="col-md-6 col-lg-4">
       <div class="card glass h-100">
         <div class="card-body">
           <h5>Collection</h5>
@@ -47,17 +47,7 @@ function formatEuros(int $centimes): string {
       </div>
     </div>
 
-    <div class="col-md-6 col-lg-3">
-      <div class="card glass h-100">
-        <div class="card-body">
-          <h5>Deck Builder</h5>
-          <p>Compose ton équipe de 3 cartes pour optimiser tes combats.</p>
-          <a class="btn btn-warning w-100" href="deck.php">Gérer mon deck</a>
-        </div>
-      </div>
-    </div>
-
-    <div class="col-md-6 col-lg-3">
+    <div class="col-md-6 col-lg-4">
       <div class="card glass h-100">
         <div class="card-body">
           <h5>Combat</h5>

@@ -103,7 +103,7 @@ function cardHtml(c, opts = {}) {
       `;
 
   return `
-    <article class="tcg-card tcg-card-v2 card3d-v2 ${typeClass}${defeatedClass}${selectableClass}${selectedClass}${benchClass}">
+    <article class="tcg-card-v2 card3d-v2 ${typeClass}${defeatedClass}${selectableClass}${selectedClass}${benchClass}">
       <div class="tcg-card-v2-inner">
         ${image}
 
