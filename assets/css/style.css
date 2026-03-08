@@ -424,6 +424,8 @@ body {
     width: min(320px, calc(100vw - 20px));
     bottom: 162px;
   }
+}
+
 /* Collection V2 */
 .card3d-v2 {
   perspective: 1200px;
