@@ -27,7 +27,7 @@ function formatEuros(int $centimes): string {
   </div>
 
   <div class="row g-3">
-    <div class="col-md-6 col-lg-3">
+    <div class="col-md-6 col-lg-4">
       <div class="card glass h-100">
         <div class="card-body">
           <h5>Booster</h5>
@@ -37,7 +37,7 @@ function formatEuros(int $centimes): string {
       </div>
     </div>
 
-    <div class="col-md-6 col-lg-3">
+    <div class="col-md-6 col-lg-4">
       <div class="card glass h-100">
         <div class="card-body">
           <h5>Collection</h5>
@@ -47,18 +47,7 @@ function formatEuros(int $centimes): string {
       </div>
     </div>
 
-
-    <div class="col-md-6 col-lg-3">
-      <div class="card glass h-100">
-        <div class="card-body">
-          <h5>Collection V2</h5>
-          <p>Zone de test design : cartes full-art + effet 3D au survol.</p>
-          <a class="btn btn-info w-100" href="collection_v2.php">Tester la collection V2</a>
-        </div>
-      </div>
-    </div>
-
-    <div class="col-md-6 col-lg-3">
+    <div class="col-md-6 col-lg-4">
       <div class="card glass h-100">
         <div class="card-body">
           <h5>Combat</h5>
