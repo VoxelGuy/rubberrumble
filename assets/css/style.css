@@ -437,6 +437,7 @@ body {
   perspective: 1200px;
 }
 .tcg-card-v2 {
+  position: relative;
   border-radius: 18px;
   aspect-ratio: 3 / 4;
 }

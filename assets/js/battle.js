@@ -393,9 +393,10 @@ if (app) {
     const damage = Number(attacker[`attack_damage_${slot}`]);
     const attackName = attacker[`attack_name_${slot}`];
 
+    const cardSelector = '.tcg-card-v2, .tcg-card';
     const cardEl = owner === 'my'
-      ? myActiveCardEl.querySelector('.tcg-card')
-      : enemyActiveCardEl.querySelector('.tcg-card');
+      ? myActiveCardEl.querySelector(cardSelector)
+      : enemyActiveCardEl.querySelector(cardSelector);
 
     const ok = await wheelAtCard(cardEl, success);
     if (!ok) {
