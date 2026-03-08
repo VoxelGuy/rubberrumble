@@ -266,3 +266,162 @@ body {
   60% { transform: translateX(8px); }
   100% { transform: translateX(0); }
 }
+
+/* Collection V2 */
+.card3d-v2 {
+  perspective: 1200px;
+}
+.tcg-card-v2 {
+  border-radius: 18px;
+  aspect-ratio: 3 / 4;
+}
+.tcg-card-v2-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 18px;
+  overflow: hidden;
+  outline: 1px solid rgba(255,255,255,.07);
+  box-shadow: 0 28px 60px rgba(0,0,0,.45), 0 10px 22px rgba(0,0,0,.25);
+  transform-style: preserve-3d;
+  --rx: 0deg;
+  --ry: 0deg;
+  --sx: 50%;
+  --sy: 50%;
+  --s: 1;
+  transform: rotateX(var(--rx)) rotateY(var(--ry)) scale(var(--s));
+  transition: transform 140ms ease-out, box-shadow 140ms ease-out;
+  background: #101521;
+}
+.card3d-v2:hover .tcg-card-v2-inner {
+  --s: 1.045;
+  transition: transform 60ms linear;
+  box-shadow: 0 40px 90px rgba(0,0,0,.55), 0 14px 30px rgba(0,0,0,.28);
+}
+.tcg-card-v2-inner::before {
+  content: "";
+  position: absolute;
+  inset: -60%;
+  background: radial-gradient(circle at var(--sx) var(--sy), rgba(255,255,255,.34), rgba(255,255,255,.14) 18%, rgba(255,255,255,0) 55%);
+  opacity: 0;
+  transition: opacity 180ms ease-out;
+  pointer-events: none;
+  mix-blend-mode: screen;
+  filter: blur(10px);
+  transform: translateZ(2px);
+  z-index: 2;
+}
+.card3d-v2:hover .tcg-card-v2-inner::before { opacity: 1; }
+.tcg-card-v2-inner::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(to bottom, rgba(0,0,0,.08), rgba(0,0,0,.45));
+  transform: translateZ(1px);
+  z-index: 1;
+}
+.card-v2-bg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.card-v2-top,
+.card-v2-bottom,
+.card-v2-qty {
+  position: absolute;
+  z-index: 4;
+  transform: translateZ(40px);
+}
+.card-v2-top {
+  top: 12px;
+  left: 12px;
+  right: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+.card-v2-bottom {
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.card-v2-meta-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+.card-v2-attacks {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.card-chip,
+.card-attack-v2,
+.card-v2-qty {
+  background: rgba(0, 0, 0, .55);
+  border: 1px solid rgba(255,255,255,.18);
+  border-radius: 10px;
+  color: #fff;
+  text-shadow: 0 1px 2px rgba(0,0,0,.6);
+  backdrop-filter: blur(2px);
+}
+.card-chip {
+  padding: .3rem .55rem;
+  font-size: .8rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+.card-name {
+  max-width: 62%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.card-stats {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+}
+.type-bubble {
+  width: 1.4rem;
+  height: 1.4rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: rgba(255,255,255,.2);
+}
+.card-attack-v2 {
+  padding: .45rem .6rem;
+  width: 100%;
+  font-weight: 700;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: .4rem;
+  font-size: .83rem;
+}
+.card-attack-v2 span {
+  font-size: .76rem;
+  opacity: .9;
+  white-space: nowrap;
+}
+.card-v2-qty {
+  right: 12px;
+  bottom: 148px;
+  padding: .2rem .45rem;
+  font-size: .75rem;
+  font-weight: 800;
+}
+.tcg-card-v2.locked .card-v2-bg,
+.tcg-card-v2.locked .card-v2-top,
+.tcg-card-v2.locked .card-v2-bottom,
+.tcg-card-v2.locked .card-v2-qty {
+  filter: blur(18px) grayscale(1) brightness(0.65);
+}
