@@ -52,6 +52,15 @@ function wait(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function typeEmoji(type) {
+  const key = (type || '').toLowerCase();
+  if (key === 'plante') return '🌿';
+  if (key === 'feu') return '🔥';
+  if (key === 'eau') return '💧';
+  if (key === 'speciale') return '✨';
+  return '❓';
+}
+
 function cardHtml(c, opts = {}) {
   const {
     defeated = false,
@@ -63,52 +72,57 @@ function cardHtml(c, opts = {}) {
   } = opts;
 
   const typeClass = `type-${(c.type || '').toLowerCase()}`;
-  const nameClass = typeNameClass(c.type);
   const defeatedClass = defeated ? ' defeated-card' : '';
   const selectableClass = selectable ? ' selectable-card' : '';
   const selectedClass = selected ? ' selected-card' : '';
   const benchClass = bench ? ' bench-card' : '';
-
-  const img = c.image_path
-    ? `<img src="${c.image_path}" alt="">`
-    : `<div class="fallback-label">${c.type}</div>`;
+  const rarity = rarityMeta(c.rarity);
 
   const hpValue = Math.max(0, Number(c.hp || 0));
   const maxValue = Math.max(1, Number(c.maxHp || c.hp || 1));
   const hpPct = Math.max(0, Math.min(100, Math.round((hpValue / maxValue) * 100)));
 
+  const image = c.image_path
+    ? `<img class="card-v2-bg" src="${c.image_path}" alt="">`
+    : `<div class="card-v2-fallback">${c.type}</div>`;
+
   const attacks = hideAttacks
     ? ''
     : showAttackButtons
-    ? `
-      <button class="btn btn-sm btn-outline-light card-attack-btn" data-slot="1">
-        <strong>${c.attack_name_1}</strong><br><span>${c.attack_damage_1} dmg • ${c.attack_success_1}%</span>
-      </button>
-      <button class="btn btn-sm btn-outline-light card-attack-btn" data-slot="2">
-        <strong>${c.attack_name_2}</strong><br><span>${c.attack_damage_2} dmg • ${c.attack_success_2}%</span>
-      </button>
-    `
-    : `
-      <div>1) ${c.attack_name_1} — ${c.attack_damage_1} (${c.attack_success_1}%)</div>
-      <div>2) ${c.attack_name_2} — ${c.attack_damage_2} (${c.attack_success_2}%)</div>
-    `;
+      ? `
+        <button class="btn btn-sm btn-outline-light card-attack-btn" data-slot="1">
+          <strong>${c.attack_name_1}</strong><br><span>${c.attack_damage_1} dmg • ${c.attack_success_1}%</span>
+        </button>
+        <button class="btn btn-sm btn-outline-light card-attack-btn" data-slot="2">
+          <strong>${c.attack_name_2}</strong><br><span>${c.attack_damage_2} dmg • ${c.attack_success_2}%</span>
+        </button>
+      `
+      : `
+        <div class="card-attack-v2">${c.attack_name_1} <span>${c.attack_damage_1} • ${c.attack_success_1}%</span></div>
+        <div class="card-attack-v2">${c.attack_name_2} <span>${c.attack_damage_2} • ${c.attack_success_2}%</span></div>
+      `;
 
   return `
-    <div class="tcg-card ${typeClass}${defeatedClass}${selectableClass}${selectedClass}${benchClass}">
-      <div class="tcg-header battle-hp-header">
-        <div class="battle-hp-top">
-          <span class="monster-name ${nameClass}">${c.name}</span>
-          <span class="hp-text">PV ${hpValue}/${maxValue}</span>
+    <article class="tcg-card-v2 card3d-v2 ${typeClass}${defeatedClass}${selectableClass}${selectedClass}${benchClass}">
+      <div class="tcg-card-v2-inner">
+        ${image}
+
+        <div class="card-v2-top">
+          <div class="card-chip card-name">${c.name}</div>
+          <div class="card-chip card-stats">PV ${hpValue}/${maxValue} <span class="type-bubble">${typeEmoji(c.type)}</span></div>
         </div>
-        <div class="hp-track"><div class="hp-fill" style="width:${hpPct}%"></div></div>
+
+        <div class="hp-track card-v2-hp"><div class="hp-fill" style="width:${hpPct}%"></div></div>
+
+        <div class="card-v2-bottom">
+          <div class="card-v2-meta-row">
+            <div class="card-chip rarity-label ${rarity.className}">${'⭐'.repeat(rarity.stars)} ${c.rarity || ''}</div>
+            <div class="card-chip">⚡ ${c.speed || 50}</div>
+          </div>
+          <div class="card-v2-attacks card-attacks">${attacks}</div>
+        </div>
       </div>
-      <div class="tcg-image">${img}</div>
-      <div class="tcg-body">
-        <div class="small">${rarityHtml(c.rarity)}</div>
-        <div>⚡ Vitesse: ${c.speed || 50}</div>
-        <div class="card-attacks">${attacks}</div>
-      </div>
-    </div>`;
+    </article>`;
 }
 
 const app = document.getElementById('battleApp');
@@ -379,9 +393,10 @@ if (app) {
     const damage = Number(attacker[`attack_damage_${slot}`]);
     const attackName = attacker[`attack_name_${slot}`];
 
+    const cardSelector = '.tcg-card-v2, .tcg-card';
     const cardEl = owner === 'my'
-      ? myActiveCardEl.querySelector('.tcg-card')
-      : enemyActiveCardEl.querySelector('.tcg-card');
+      ? myActiveCardEl.querySelector(cardSelector)
+      : enemyActiveCardEl.querySelector(cardSelector);
 
     const ok = await wheelAtCard(cardEl, success);
     if (!ok) {

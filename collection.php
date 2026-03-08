@@ -17,11 +17,21 @@ $cards = $stmt->fetchAll();
 
 function rarityMeta(string $rarity): array {
     return match ($rarity) {
-        'Commun' => ['stars' => 1, 'class' => 'rarity-commun'],
-        'Rare' => ['stars' => 2, 'class' => 'rarity-rare'],
-        'SuperRare' => ['stars' => 3, 'class' => 'rarity-superrare'],
-        'Legendaire' => ['stars' => 4, 'class' => 'rarity-legendaire'],
-        default => ['stars' => 1, 'class' => 'rarity-commun'],
+        'Commun' => ['stars' => 1, 'class' => 'rarity-commun', 'label' => 'Commun'],
+        'Rare' => ['stars' => 2, 'class' => 'rarity-rare', 'label' => 'Rare'],
+        'SuperRare' => ['stars' => 3, 'class' => 'rarity-superrare', 'label' => 'Super Rare'],
+        'Legendaire' => ['stars' => 4, 'class' => 'rarity-legendaire', 'label' => 'Légendaire'],
+        default => ['stars' => 1, 'class' => 'rarity-commun', 'label' => 'Commun'],
+    };
+}
+
+function typeEmoji(string $type): string {
+    return match ($type) {
+        'Plante' => '🌿',
+        'Feu' => '🔥',
+        'Eau' => '💧',
+        'Speciale' => '✨',
+        default => '❓',
     };
 }
 ?>
@@ -36,34 +46,79 @@ function rarityMeta(string $rarity): array {
 </head>
 <body class="bg-dark text-light">
 <div class="container py-4">
-  <a href="index.php" class="btn btn-outline-light mb-3">← Retour</a>
-  <h2>📚 Collection</h2>
+  <div class="d-flex flex-wrap gap-2 align-items-center justify-content-between mb-3">
+    <a href="index.php" class="btn btn-outline-light">← Retour</a>
+    <h2 class="mb-0">📚 Collection</h2>
+  </div>
 
-  <div class="row g-3">
+  <div class="row g-4">
     <?php foreach ($cards as $c): ?>
-      <div class="col-md-4 col-lg-3">
-        <div class="tcg-card type-<?= strtolower($c['type']) ?> <?= ((int)$c['qty'] === 0 ? 'locked' : '') ?>">
-          <div class="tcg-header">
-            <span><?= htmlspecialchars($c['name']) ?></span>
-            <span>x<?= (int)$c['qty'] ?></span>
-          </div>
-          <div class="tcg-image">
+      <?php $rarity = rarityMeta($c['rarity']); ?>
+      <div class="col-sm-6 col-lg-3">
+        <article class="tcg-card-v2 card3d-v2 <?= ((int)$c['qty'] === 0 ? 'locked' : '') ?>" data-tilt-v2>
+          <div class="tcg-card-v2-inner type-<?= strtolower($c['type']) ?>">
             <?php if (!empty($c['image_path'])): ?>
-              <img src="<?= htmlspecialchars($c['image_path']) ?>" alt="">
-            <?php else: ?>
-              <div class="fallback-label"><?= htmlspecialchars($c['type']) ?></div>
+              <img class="card-v2-bg" src="<?= htmlspecialchars($c['image_path']) ?>" alt="<?= htmlspecialchars($c['name']) ?>">
             <?php endif; ?>
+
+            <div class="card-v2-top">
+              <div class="card-chip card-name"><?= htmlspecialchars($c['name']) ?></div>
+              <div class="card-chip card-stats">PV <?= (int)$c['hp'] ?> <span class="type-bubble" title="<?= htmlspecialchars($c['type']) ?>"><?= typeEmoji($c['type']) ?></span></div>
+            </div>
+
+            <div class="card-v2-bottom">
+              <div class="card-v2-meta-row">
+                <div class="card-chip <?= $rarity['class'] ?>"><?= str_repeat('⭐', (int)$rarity['stars']) ?> <?= htmlspecialchars($rarity['label']) ?></div>
+                <div class="card-chip">⚡ <?= (int)($c['speed'] ?? 50) ?></div>
+              </div>
+              <div class="card-v2-attacks">
+                <div class="card-attack-v2"><?= htmlspecialchars($c['attack_name_1']) ?> <span><?= (int)$c['attack_damage_1'] ?> • <?= (int)$c['attack_success_1'] ?>%</span></div>
+                <div class="card-attack-v2"><?= htmlspecialchars($c['attack_name_2']) ?> <span><?= (int)$c['attack_damage_2'] ?> • <?= (int)$c['attack_success_2'] ?>%</span></div>
+              </div>
+            </div>
+
+            <div class="card-v2-qty">x<?= (int)$c['qty'] ?></div>
           </div>
-          <div class="tcg-body">
-            <?php $rarity = rarityMeta($c['rarity']); ?>
-            <div class="small"><span class="rarity-label <?= $rarity['class'] ?>"><?= str_repeat('⭐', (int)$rarity['stars']) ?> <?= htmlspecialchars($c['rarity']) ?></span> | PV <?= (int)$c['hp'] ?></div>
-            <div><?= htmlspecialchars($c['attack_name_1']) ?> — <?= (int)$c['attack_damage_1'] ?> (<?= (int)$c['attack_success_1'] ?>%)</div>
-            <div><?= htmlspecialchars($c['attack_name_2']) ?> — <?= (int)$c['attack_damage_2'] ?> (<?= (int)$c['attack_success_2'] ?>%)</div>
-          </div>
-        </div>
+        </article>
       </div>
     <?php endforeach; ?>
   </div>
 </div>
+
+<script>
+(() => {
+  const MAX_TILT = 18;
+  const cards = document.querySelectorAll('[data-tilt-v2]');
+  const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
+
+  cards.forEach((card) => {
+    const inner = card.querySelector('.tcg-card-v2-inner');
+
+    card.addEventListener('mousemove', (e) => {
+      const r = card.getBoundingClientRect();
+      const px = (e.clientX - r.left) / r.width;
+      const py = (e.clientY - r.top) / r.height;
+
+      const dx = (px - 0.5) * 2;
+      const dy = (py - 0.5) * 2;
+
+      const rx = clamp((-dy * MAX_TILT), -MAX_TILT, MAX_TILT);
+      const ry = clamp((dx * MAX_TILT), -MAX_TILT, MAX_TILT);
+
+      inner.style.setProperty('--rx', `${rx.toFixed(2)}deg`);
+      inner.style.setProperty('--ry', `${ry.toFixed(2)}deg`);
+      inner.style.setProperty('--sx', `${(px * 100).toFixed(1)}%`);
+      inner.style.setProperty('--sy', `${(py * 100).toFixed(1)}%`);
+    });
+
+    card.addEventListener('mouseleave', () => {
+      inner.style.setProperty('--rx', '0deg');
+      inner.style.setProperty('--ry', '0deg');
+      inner.style.setProperty('--sx', '50%');
+      inner.style.setProperty('--sy', '50%');
+    });
+  });
+})();
+</script>
 </body>
 </html>
