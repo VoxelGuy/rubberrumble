@@ -20,6 +20,22 @@ h1, h2, h3, h4, h5, h6,
   justify-content: center;
   align-items: center;
   min-height: 56px;
+  padding-top: 2.8rem;
+  padding-bottom: 2.8rem;
+}
+
+.app-title {
+  font-size: clamp(2.8rem, 8vw, 5.5rem);
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.title-side-img {
+  width: clamp(34px, 6vw, 64px);
+  height: clamp(34px, 6vw, 64px);
+  object-fit: contain;
 }
 
 .currency-badge {
@@ -29,6 +45,20 @@ h1, h2, h3, h4, h5, h6,
   transform: translateY(-50%);
   font-size: 1.25rem;
   padding: .65rem 1rem;
+  font-family: "Gloria Hallelujah", cursive;
+}
+
+.home-card-title {
+  font-size: 1.9rem;
+}
+
+.home-card-btn {
+  opacity: .86;
+  border-color: rgba(255,255,255,.3);
+}
+.home-card-btn:hover,
+.home-card-btn:focus {
+  opacity: 1;
 }
 
 @media (max-width: 576px) {
@@ -40,6 +70,9 @@ h1, h2, h3, h4, h5, h6,
   .currency-badge {
     position: static;
     transform: none;
+  }
+  .app-title {
+    gap: .6rem;
   }
 }
 .glass {
