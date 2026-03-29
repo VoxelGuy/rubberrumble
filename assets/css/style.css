@@ -1,5 +1,46 @@
+@import url('https://fonts.googleapis.com/css2?family=Gloria+Hallelujah&family=Lato:wght@400;700;900&display=swap');
+
 body {
-  background: radial-gradient(circle at top, #1a1f2b, #0f1218);
+  font-family: "Lato", sans-serif;
+  min-height: 100vh;
+  background:
+    linear-gradient(rgba(10, 14, 20, 0.74), rgba(10, 14, 20, 0.74)),
+    url("../img/bg.png") center / cover no-repeat fixed;
+}
+
+h1, h2, h3, h4, h5, h6,
+.navbar-brand,
+.btn {
+  font-family: "Gloria Hallelujah", cursive;
+}
+
+.home-header {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 56px;
+}
+
+.currency-badge {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 1.25rem;
+  padding: .65rem 1rem;
+}
+
+@media (max-width: 576px) {
+  .home-header {
+    flex-direction: column;
+    gap: .75rem;
+    min-height: auto;
+  }
+  .currency-badge {
+    position: static;
+    transform: none;
+  }
 }
 .glass {
   background: rgba(255,255,255,0.06);
