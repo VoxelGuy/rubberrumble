@@ -48,7 +48,7 @@ function typeEmoji(string $type): string {
 <div class="container py-4">
   <div class="d-flex flex-wrap gap-2 align-items-center justify-content-between mb-3">
     <a href="index.php" class="btn btn-outline-light">← Retour</a>
-    <h2 class="mb-0">📚 Collection</h2>
+    <h2 class="mb-0">Collection</h2>
   </div>
 
   <div class="row g-4">

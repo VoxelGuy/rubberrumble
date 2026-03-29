@@ -100,7 +100,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <body class="bg-dark text-light">
 <div class="container py-4">
   <a href="index.php" class="btn btn-outline-light mb-3">← Retour</a>
-  <h2>🎁 Booster</h2>
+  <h2>Booster</h2>
   <div class="mb-3">Crédit: <span class="badge text-bg-warning"><?= formatEuros((int)$player['coins']) ?></span></div>
 
   <form method="post">
