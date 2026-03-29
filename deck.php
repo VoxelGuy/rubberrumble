@@ -65,8 +65,9 @@ foreach($deckRows as $d) $deck[(int)$d['slot_num']] = (int)$d['card_id'];
 <html lang="fr">
 <head>
   <meta charset="utf-8">
-  <title>Deck Builder - Rubber Rumble</title>
+  <title>Deck Builder - Animoches</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="assets/css/style.css" rel="stylesheet">
 </head>
 <body class="rr-bg text-light">
 <div class="container py-4">
